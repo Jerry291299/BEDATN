@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "outDir": "./build",
+    "strict": true,
+    "esModuleInterop": true,
+   
+  },
+  "include": ["src/**/*.ts", "src/middleware/uploadImage.js", "src/index.ts", "src/utils/Cloudinary.js"],
+  "exclude": ["node_modules"]
+}
