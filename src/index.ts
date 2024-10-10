@@ -1,3 +1,4 @@
+
 // src/index.ts
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
@@ -7,6 +8,7 @@ import { Uploadfile } from "./upload";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import category from "./danhmuc";
 var cors = require("cors");
 const fs = require("fs");
 const asyncHandler = require("express-async-handler");
@@ -64,6 +66,58 @@ app.post(
   }
 );
 
+//  Categoty : Get
+app.get("/category",async(req:Request,res:Response)=>{
+  try{
+    const categories = await category.find();
+    res.json(categories);
+  }catch(error){
+    console.log(error);
+    res.status(500).json({message:"Lỗi khi lấy thông tin danh mục"});
+  }
+});
+app.get("/category/:id", async (req:Request,res:Response)=>{
+  try{
+    const {id} =req.params;
+    const Category = await category.findById(id);
+    res.json(Category);
+  }catch(error){
+    console.log(error);
+    res.status(500).json({message:"Lỗi khi lấy thông tin danh mục"});
+  }
+});
+
+//  Categoty : Post
+app.post("/addcategory",async(req:Request,res:Response)=>{
+  try{
+    const newCategory = new category(req.body);
+    await newCategory.save();
+    res.status(201).json({
+      massege: "Thêm Category thành công",
+      category: newCategory,
+      status: 200,
+    });
+  }catch(error){
+    console.log(error);
+    res.status(500).json({message:"Lỗi thêm mới danh mục"});
+  }
+}); 
+
+//  Categoty : Delete
+app.delete("/category/:id",async (req:Request,res:Response)=>{
+  try{
+    const {id} =req.params;
+    const del = await category.findByIdAndDelete(id);
+    res.json({
+      message:"Danh mục đã xoá thành công",
+      id: id,
+      test: del,
+    });
+  }catch(error){
+    console.log(error);
+    res.status(500).json({ message: "Lỗi khi xóa danh mục" });
+  }
+})
 
 
 
