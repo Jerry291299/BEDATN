@@ -61,6 +61,17 @@ app.post(
     }
   }
 );
+app.get("/users", async (req: Request, res: Response) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Error getting user information!",
+    });
+  }
+});
 // Login
 app.post("/login", async (req: Request, res: Response) => {
   try {
