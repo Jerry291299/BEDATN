@@ -3,7 +3,7 @@
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
 import bodyParser from "body-parser";
-
+import User from "./user";
 import { Uploadfile } from "./upload";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -65,6 +65,24 @@ app.post(
     }
   }
 );
+
+app.post("/register",async(req:Request,res:Response)=>{
+  try{
+    const {name, email,password} =req.body;
+    const hashedPassword = await bcrypt.hash(password,10);
+    const newUser = new User({ name, email, password: hashedPassword});
+    await newUser.save();
+    res.status(201).json({
+      message: "Thêm người dùng thành công",
+      user: newUser,
+      status: 200,
+    });
+  } catch (error){
+    console.error(error);
+    res.status(500).json({message:"Lỗi khi tạo người dùng mới"});
+  }
+});
+
 
 //  Categoty : Get
 app.get("/category",async(req:Request,res:Response)=>{
