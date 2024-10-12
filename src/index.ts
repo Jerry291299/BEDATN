@@ -120,6 +120,82 @@ app.post("/register", async (req: Request, res: Response) => {
   }
 });
 
+app.post("/product/add", async (req: Request, res: Response) => {
+  try {
+    const { name, price, img, categoryID } = req.body;
+    console.log(categoryID);
+
+    // console.log("Request Body:", req.body);
+
+    const Category = await category.findById(categoryID);
+    // console.log("Found Category:", category);
+
+    if (!Category) {
+      return res.status(404).json({ message: "Không tìm thấy danh mục" });
+    }
+    const newProduct = new Product({ name, price, img, category: categoryID });
+    await newProduct.save();
+    res.status(201).json({
+      message: "Thêm sản phẩm thành công",
+      product: newProduct,
+      status: 200,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Lỗi thêm mới" });
+  }
+});
+
+app.get("/product", async (req: Request, res: Response) => {
+  try {
+    const products = await Product.find().populate("category", "name");
+    res.json(products);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Lỗi khi lấy thông tin sản phẩm" });
+  }
+});
+
+app.get("/product/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findById(id).populate("category", "name");
+    res.json(product);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Lỗi khi lấy thông tin sản phẩm" });
+  }
+});
+
+app.put("/update/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const updateProduct = await Product.findByIdAndUpdate(id, req.body, {
+      new: true,
+    });
+    res.json(updateProduct);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Lỗi khi cập nhật sản phẩm" });
+  }
+});
+
+app.delete("/product/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const test = await Product.findByIdAndDelete(id);
+
+    res.json({
+      message: "Sản phẩm đã được xóa thành công",
+      id: id,
+      test: test,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "lỗi khi xóa sản phẩm" });
+  }
+});
+
 //  Categoty : Get
 app.get("/category", async (req: Request, res: Response) => {
   try {
