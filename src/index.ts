@@ -8,6 +8,8 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import category from "./danhmuc";
+import Product from "./product";
+
 var cors = require("cors");
 const fs = require("fs");
 const asyncHandler = require("express-async-handler");
