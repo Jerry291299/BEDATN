@@ -1,4 +1,3 @@
-
 // src/index.ts
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
@@ -35,9 +34,6 @@ mongoose
 app.use(cors()); // Enable CORS for all routes
 app.use(bodyParser.json());
 
-
-
-
 app.post(
   "/upload",
   uploadPhoto.array("images", 10),
@@ -65,49 +61,89 @@ app.post(
     }
   }
 );
+app.get("/users", async (req: Request, res: Response) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Error getting user information!",
+    });
+  }
+});
+// Login
+app.post("/login", async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found!",
+      });
+    }
 
-app.post("/register",async(req:Request,res:Response)=>{
-  try{
-    const {name, email,password} =req.body;
-    const hashedPassword = await bcrypt.hash(password,10);
-    const newUser = new User({ name, email, password: hashedPassword});
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    console.log(user);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Invalid password!" });
+    }
+
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
+      expiresIn: process.env.EXPIRES_TOKEN,
+    });
+
+    res.json({
+      info: email,
+      token: token,
+      expiresIn: process.env.EXPIRES_TOKEN,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error Logging in!" });
+  }
+});
+app.post("/register", async (req: Request, res: Response) => {
+  try {
+    const { name, email, password } = req.body;
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ name, email, password: hashedPassword });
     await newUser.save();
     res.status(201).json({
       message: "Thêm người dùng thành công",
       user: newUser,
       status: 200,
     });
-  } catch (error){
+  } catch (error) {
     console.error(error);
-    res.status(500).json({message:"Lỗi khi tạo người dùng mới"});
+    res.status(500).json({ message: "Lỗi khi tạo người dùng mới" });
   }
 });
-
 
 //  Categoty : Get
-app.get("/category",async(req:Request,res:Response)=>{
-  try{
+app.get("/category", async (req: Request, res: Response) => {
+  try {
     const categories = await category.find();
     res.json(categories);
-  }catch(error){
+  } catch (error) {
     console.log(error);
-    res.status(500).json({message:"Lỗi khi lấy thông tin danh mục"});
+    res.status(500).json({ message: "Lỗi khi lấy thông tin danh mục" });
   }
 });
-app.get("/category/:id", async (req:Request,res:Response)=>{
-  try{
-    const {id} =req.params;
+app.get("/category/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
     const Category = await category.findById(id);
     res.json(Category);
-  }catch(error){
+  } catch (error) {
     console.log(error);
-    res.status(500).json({message:"Lỗi khi lấy thông tin danh mục"});
+    res.status(500).json({ message: "Lỗi khi lấy thông tin danh mục" });
   }
 });
 
 //  Categoty : Post
-app.post("/addcategory",async(req:Request,res:Response)=>{
-  try{
+app.post("/addcategory", async (req: Request, res: Response) => {
+  try {
     const newCategory = new category(req.body);
     await newCategory.save();
     res.status(201).json({
@@ -115,29 +151,27 @@ app.post("/addcategory",async(req:Request,res:Response)=>{
       category: newCategory,
       status: 200,
     });
-  }catch(error){
+  } catch (error) {
     console.log(error);
-    res.status(500).json({message:"Lỗi thêm mới danh mục"});
+    res.status(500).json({ message: "Lỗi thêm mới danh mục" });
   }
-}); 
+});
 
 //  Categoty : Delete
-app.delete("/category/:id",async (req:Request,res:Response)=>{
-  try{
-    const {id} =req.params;
+app.delete("/category/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
     const del = await category.findByIdAndDelete(id);
     res.json({
-      message:"Danh mục đã xoá thành công",
+      message: "Danh mục đã xoá thành công",
       id: id,
       test: del,
     });
-  }catch(error){
+  } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Lỗi khi xóa danh mục" });
   }
-})
-
-
+});
 
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
