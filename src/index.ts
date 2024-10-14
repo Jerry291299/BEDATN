@@ -3,12 +3,12 @@ import express, { Request, Response } from "express";
 import mongoose from "mongoose";
 import bodyParser from "body-parser";
 import User from "./user";
+import Product from "./product";
+// import upload from "./upload";
 import { Uploadfile } from "./upload";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
 import category from "./danhmuc";
-import Product from "./product";
 
 var cors = require("cors");
 const fs = require("fs");
@@ -127,10 +127,8 @@ app.post("/product/add", async (req: Request, res: Response) => {
     const { name, price, img, categoryID } = req.body;
     console.log(categoryID);
 
-    // console.log("Request Body:", req.body);
 
     const Category = await category.findById(categoryID);
-    // console.log("Found Category:", category);
 
     if (!Category) {
       return res.status(404).json({ message: "Không tìm thấy danh mục" });
