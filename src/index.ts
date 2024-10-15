@@ -180,6 +180,19 @@ app.put("/update/:id", async (req: Request, res: Response) => {
   }
 });
 
+app.put("/updatecategory/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const updateCategory = await category.findByIdAndUpdate(id, req.body, {
+      new: true,
+    });
+    res.json(updateCategory);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Lỗi khi cập nhật Danh mục" });
+  }
+});
+
 app.delete("/product/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
