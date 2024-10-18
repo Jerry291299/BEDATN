@@ -91,15 +91,42 @@ app.post("/login", async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Invalid password!" });
     }
 
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
+    const token = jwt.sign({ userId: user._id, role: user.role }, JWT_SECRET, {
       expiresIn: process.env.EXPIRES_TOKEN,
     });
 
-    res.json({
-      info: email,
-      token: token,
-      expiresIn: process.env.EXPIRES_TOKEN,
-    });
+    // Kiểm tra vai trò của người dùng
+    if (user.role === "admin") {
+      res.json({
+        message: "Welcome Admin!",
+        info: {
+          email: user.email,
+          role: user.role,
+        },
+        token: token,
+        expiresIn: process.env.EXPIRES_TOKEN,
+      });
+    } else if (user.role === "shipper") {
+      res.json({
+        message: "Welcome Shipper!",
+        info: {
+          email: user.email,
+          role: user.role,
+        },
+        token: token,
+        expiresIn: process.env.EXPIRES_TOKEN,
+      });
+    } else {
+      res.json({
+        message: "Welcome User!",
+        info: {
+          email: user.email,
+          role: user.role,
+        },
+        token: token,
+        expiresIn: process.env.EXPIRES_TOKEN,
+      });
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error Logging in!" });
@@ -126,7 +153,6 @@ app.post("/product/add", async (req: Request, res: Response) => {
   try {
     const { name, price, img, categoryID } = req.body;
     console.log(categoryID);
-
 
     const Category = await category.findById(categoryID);
 
