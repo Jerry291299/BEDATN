@@ -9,6 +9,7 @@ import { Uploadfile } from "./upload";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import category from "./danhmuc";
+import Cart from "./cart";
 
 var cors = require("cors");
 const fs = require("fs");
@@ -74,6 +75,128 @@ app.get("/users", async (req: Request, res: Response) => {
     });
   }
 });
+
+app.put("/user/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const updatedUser = await User.findByIdAndUpdate(id, req.body, {
+      new: true,
+    });
+    res.json(updatedUser);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Lỗi khi cập nhật thông tin người dùng" });
+  }
+});
+
+app.post("/cart/add", async (req: Request, res: Response) => {
+  const { userId, items } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: "Invalid userId format" });
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: "ko được để trống elements" });
+  }
+  const { productId, name, price, img, quantity } = items[0];
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    return res.status(400).json({ message: "Invalid productId format" });
+  }
+  if (quantity <= 0) {
+    return res.status(400).json({ message: "Số lượng phải lớn hơn 0" });
+  }
+
+  try {
+    let cart = await Cart.findOne({ userId });
+
+    if (cart) {
+      
+      const productIndex = cart.items.findIndex(
+        (p) => p.productId.toString() === productId
+      );
+
+      if (productIndex > -1) {
+       
+        let productItem = cart.items[productIndex];
+        productItem.quantity += quantity; 
+        cart.items[productIndex] = productItem; 
+      } else {
+        
+        cart.items.push({ productId, name, price, img, quantity });
+      }
+
+      cart = await cart.save();
+      return res.status(200).json(cart);
+    } else {
+      
+      const newCart = await Cart.create({
+        userId,
+        items: [{ productId, name, price, img, quantity }], 
+      });
+
+      return res.status(201).json(newCart);
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error adding to cart" });
+  }
+});
+
+app.delete("/cart/remove", async (req: Request, res: Response) => {
+  const { userId, productId } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: "Invalid userId format" });
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    return res.status(400).json({ message: "Invalid productId format" });
+  }
+
+  try {
+    let cart = await Cart.findOne({ userId });
+    if (cart) {
+      const productIndex = cart.items.findIndex(
+        (item) => item.productId.toString() === productId
+      );
+
+      if (productIndex > -1) {
+        cart.items.splice(productIndex, 1); // Remove the item from the cart
+        await cart.save();
+        return res.status(200).json(cart);
+      } else {
+        return res.status(404).json({ message: "Product not found in cart" });
+      }
+    } else {
+      return res.status(404).json({ message: "Cart not found" });
+    }
+  } catch (error) {
+    console.error("Error removing item from cart:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.get("/cart/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    console.log(`Fetching cart for userId: ${id}`);
+    const giohang = await Cart.findOne({ userId: id }).populate("items");
+    console.log(`Cart fetched:`, giohang);
+
+    if (!giohang) {
+      return res.status(404).json({ message: "Cart is Empty", isEmpty : true });
+    }
+
+    res.json(giohang);
+  } catch (error) {
+    console.error("Get cart error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+
 // Login
 app.post("/login", async (req: Request, res: Response) => {
   try {
@@ -102,6 +225,7 @@ app.post("/login", async (req: Request, res: Response) => {
         info: {
           email: user.email,
           role: user.role,
+          id: user._id
         },
         token: token,
         expiresIn: process.env.EXPIRES_TOKEN,
@@ -112,6 +236,7 @@ app.post("/login", async (req: Request, res: Response) => {
         info: {
           email: user.email,
           role: user.role,
+          id: user._id
         },
         token: token,
         expiresIn: process.env.EXPIRES_TOKEN,
@@ -122,6 +247,7 @@ app.post("/login", async (req: Request, res: Response) => {
         info: {
           email: user.email,
           role: user.role,
+          id: user._id
         },
         token: token,
         expiresIn: process.env.EXPIRES_TOKEN,
@@ -287,6 +413,30 @@ app.delete("/category/:id", async (req: Request, res: Response) => {
     res.status(500).json({ message: "Lỗi khi xóa danh mục" });
   }
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
