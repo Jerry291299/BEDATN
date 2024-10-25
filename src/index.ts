@@ -414,7 +414,25 @@ app.delete("/category/:id", async (req: Request, res: Response) => {
   }
 });
 
+// Hàm deactivate user
+export const deactivateUser = async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findById(userId);
 
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Thay đổi trạng thái isActive thành false
+    user.isActive = false;
+    await user.save();
+
+    res.status(200).json({ message: "User deactivated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deactivating user" });
+  }
+};
 
 
 
