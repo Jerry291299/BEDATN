@@ -104,23 +104,43 @@ app.post("/addcategory",async(req:Request,res:Response)=>{
 }); 
 
 //  Categoty : Delete
-app.delete("/category/:id",async (req:Request,res:Response)=>{
-  try{
-    const {id} =req.params;
-    const del = await category.findByIdAndDelete(id);
-    res.json({
-      message:"Danh mục đã xoá thành công",
-      id: id,
-      test: del,
-    });
-  }catch(error){
-    console.log(error);
-    res.status(500).json({ message: "Lỗi khi xóa danh mục" });
-  }
-})
+// app.delete("/category/:id",async (req:Request,res:Response)=>{
+//   try{
+//     const {id} =req.params;
+//     const del = await category.findByIdAndDelete(id);
+//     res.json({
+//       message:"Danh mục đã xoá thành công",
+//       id: id,
+//       test: del,
+//     });
+//   }catch(error){
+//     console.log(error);
+//     res.status(500).json({ message: "Lỗi khi xóa danh mục" });
+//   }
+// })
+//
+app.put('/categories/:id/deactivate', (req, res) => {
+  const categoryId = req.params.id;
+  
+  // Logic xử lý deactive mục với ID categoryId
 
+  res.json({ message: 'Category deactivated' });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
+app.get('/deactive/:id', (req, res) => {
+  const itemId = req.params.id;
+  // Gọi hàm để deactive item với id là itemId
+  res.send(`Deactivating item with ID ${itemId}`);
+});
 
 
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
 });
+
+
+// 
