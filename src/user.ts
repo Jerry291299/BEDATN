@@ -18,7 +18,7 @@ const UserSchema: Schema = new Schema({
     enum: ["admin", "user", "shipper"],
     default: "user",
   },
-  isActive: { type: Boolean, default: true },
+  isActive: { type: Boolean, default: true }, // thêm trường isActive
 });
 
 export default mongoose.model<User>("User", UserSchema);
