@@ -177,7 +177,7 @@ app.delete("/cart/remove", async (req: Request, res: Response) => {
   }
 });
 
-app.get("/cart/:id", async (req: Request, res: Response) => {
+app.get("/Cart/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     console.log(`Fetching cart for userId: ${id}`);
