@@ -413,6 +413,36 @@ app.delete("/category/:id", async (req: Request, res: Response) => {
     res.status(500).json({ message: "Lỗi khi xóa danh mục" });
   }
 });
+// Vô hiệu hóa người dùng
+app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findByIdAndUpdate(id, { active: false }, { new: true });
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng để vô hiệu hóa" });
+    }
+    res.json({ message: "Người dùng đã được vô hiệu hóa", user });
+  } catch (error) {
+    console.error("Error deactivating user:", error);
+    res.status(500).json({ message: "Lỗi khi vô hiệu hóa người dùng" });
+  }
+});
+
+// Kích hoạt lại người dùng
+app.put("/user/activate/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findByIdAndUpdate(id, { active: true }, { new: true });
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng để kích hoạt lại" });
+    }
+    res.json({ message: "Người dùng đã được kích hoạt lại", user });
+  } catch (error) {
+    console.error("Error activating user:", error);
+    res.status(500).json({ message: "Lỗi khi kích hoạt lại người dùng" });
+  }
+});
+
 
 
 
