@@ -277,7 +277,7 @@ app.post("/register", async (req: Request, res: Response) => {
 
 app.post("/product/add", async (req: Request, res: Response) => {
   try {
-    const { name, price, img, soLuong, moTa, chatLieu, categoryID } = req.body;
+    const { name, price, img, soLuong, moTa, categoryID } = req.body;
     console.log(categoryID);
 
     const Category = await category.findById(categoryID);
@@ -285,7 +285,7 @@ app.post("/product/add", async (req: Request, res: Response) => {
     if (!Category) {
       return res.status(404).json({ message: "Không tìm thấy danh mục" });
     }
-    const newProduct = new Product({ name, price, img, soLuong, moTa, chatLieu, category: categoryID });
+    const newProduct = new Product({ name, price, img, soLuong, moTa, category: categoryID });
     await newProduct.save();
     res.status(201).json({
       message: "Thêm sản phẩm thành công",
