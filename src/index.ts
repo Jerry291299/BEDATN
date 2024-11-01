@@ -226,6 +226,7 @@ app.post("/login", async (req: Request, res: Response) => {
         info: {
           email: user.email,
           role: user.role,
+          name: user.name,
         },
         token: token,
         expiresIn: process.env.EXPIRES_TOKEN,
@@ -237,7 +238,7 @@ app.post("/login", async (req: Request, res: Response) => {
         info: {
           email: user.email,
           role: user.role,
-        
+          name: user.name,
         },
         token: token,
         expiresIn: process.env.EXPIRES_TOKEN,
@@ -249,7 +250,7 @@ app.post("/login", async (req: Request, res: Response) => {
         info: {
           email: user.email,
           role: user.role,
-         
+          name: user.name,
         },
         token: token,
         expiresIn: process.env.EXPIRES_TOKEN,
