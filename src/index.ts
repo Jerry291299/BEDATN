@@ -222,10 +222,10 @@ app.post("/login", async (req: Request, res: Response) => {
     if (user.role === "admin") {
       res.json({
         message: "Welcome Admin!",
+        id: user._id,
         info: {
           email: user.email,
           role: user.role,
-          id: user._id
         },
         token: token,
         expiresIn: process.env.EXPIRES_TOKEN,
@@ -233,10 +233,11 @@ app.post("/login", async (req: Request, res: Response) => {
     } else if (user.role === "shipper") {
       res.json({
         message: "Welcome Shipper!",
+        id: user._id,
         info: {
           email: user.email,
           role: user.role,
-          id: user._id
+        
         },
         token: token,
         expiresIn: process.env.EXPIRES_TOKEN,
@@ -244,10 +245,11 @@ app.post("/login", async (req: Request, res: Response) => {
     } else {
       res.json({
         message: "Welcome User!",
+        id: user._id,
         info: {
           email: user.email,
           role: user.role,
-          id: user._id
+         
         },
         token: token,
         expiresIn: process.env.EXPIRES_TOKEN,
