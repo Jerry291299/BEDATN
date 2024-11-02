@@ -1,9 +1,9 @@
+import product, { Product } from './product';
 // src/index.ts
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
 import bodyParser from "body-parser";
 import User from "./user";
-import Product from "./product";
 // import upload from "./upload";
 import { Uploadfile } from "./upload";
 import bcrypt from "bcryptjs";
@@ -111,28 +111,28 @@ app.post("/cart/add", async (req: Request, res: Response) => {
     let cart = await Cart.findOne({ userId });
 
     if (cart) {
-      
+
       const productIndex = cart.items.findIndex(
         (p) => p.productId.toString() === productId
       );
 
       if (productIndex > -1) {
-       
+
         let productItem = cart.items[productIndex];
-        productItem.quantity += quantity; 
-        cart.items[productIndex] = productItem; 
+        productItem.quantity += quantity;
+        cart.items[productIndex] = productItem;
       } else {
-        
+
         cart.items.push({ productId, name, price, img, quantity });
       }
 
       cart = await cart.save();
       return res.status(200).json(cart);
     } else {
-      
+
       const newCart = await Cart.create({
         userId,
-        items: [{ productId, name, price, img, quantity }], 
+        items: [{ productId, name, price, img, quantity }],
       });
 
       return res.status(201).json(newCart);
@@ -185,7 +185,7 @@ app.get("/Cart/:id", async (req: Request, res: Response) => {
     console.log(`Cart fetched:`, giohang);
 
     if (!giohang) {
-      return res.status(404).json({ message: "Cart is Empty", isEmpty : true });
+      return res.status(404).json({ message: "Cart is Empty", isEmpty: true });
     }
 
     res.json(giohang);
@@ -288,7 +288,7 @@ app.post("/product/add", async (req: Request, res: Response) => {
     if (!Category) {
       return res.status(404).json({ message: "Không tìm thấy danh mục" });
     }
-    const newProduct = new Product({ name, price, img, soLuong, moTa, category: categoryID });
+    const newProduct = new product({ name, price, img, soLuong, moTa, category: categoryID });
     await newProduct.save();
     res.status(201).json({
       message: "Thêm sản phẩm thành công",
@@ -303,7 +303,7 @@ app.post("/product/add", async (req: Request, res: Response) => {
 
 app.get("/product", async (req: Request, res: Response) => {
   try {
-    const products = await Product.find().populate("category", "name");
+    const products = await product.find().populate("category", "name");
     res.json(products);
   } catch (error) {
     console.log(error);
@@ -314,7 +314,7 @@ app.get("/product", async (req: Request, res: Response) => {
 app.get("/product/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id).populate("category", "name");
+    const Product = await product.findById(id).populate("category", "name");
     res.json(product);
   } catch (error) {
     console.log(error);
@@ -325,7 +325,7 @@ app.get("/product/:id", async (req: Request, res: Response) => {
 app.put("/update/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const updateProduct = await Product.findByIdAndUpdate(id, req.body, {
+    const updateProduct = await product.findByIdAndUpdate(id, req.body, {
       new: true,
     });
     res.json(updateProduct);
@@ -351,7 +351,7 @@ app.put("/updatecategory/:id", async (req: Request, res: Response) => {
 app.delete("/product/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const test = await Product.findByIdAndDelete(id);
+    const test = await product.findByIdAndDelete(id);
 
     res.json({
       message: "Sản phẩm đã được xóa thành công",
@@ -402,19 +402,41 @@ app.post("/addcategory", async (req: Request, res: Response) => {
 });
 
 //  Categoty : Delete
-app.delete("/category/:id", async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const del = await category.findByIdAndDelete(id);
-    res.json({
-      message: "Danh mục đã xoá thành công",
-      id: id,
-      test: del,
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Lỗi khi xóa danh mục" });
-  }
+// app.delete("/category/:id",async (req:Request,res:Response)=>{
+//   try{
+//     const {id} =req.params;
+//     const del = await category.findByIdAndDelete(id);
+//     res.json({
+//       message:"Danh mục đã xoá thành công",
+//       id: id,
+//       test: del,
+//     });
+//   }catch(error){
+//     console.log(error);
+//     res.status(500).json({ message: "Lỗi khi xóa danh mục" });
+//   }
+// })
+//
+app.put('/categories/:id/deactivate', (req, res) => {
+  const categoryId = req.params.id;
+
+  // Logic xử lý deactive mục với ID categoryId
+
+  // app.delete("/category/:id", async (req: Request, res: Response) => {
+  //   try {
+  //     const { id } = req.params;
+  //     const del = await category.findByIdAndDelete(id);
+  //     res.json({
+  //       message: "Danh mục đã xoá thành công",
+  //       id: id,
+  //       test: del,
+  //     });
+  //   } catch (error) {
+  //     console.log(error);
+  //     res.status(500).json({ message: "Lỗi khi xóa danh mục" });
+  //   }
+  // });
+  res.json({ message: 'Category deactivated' });
 });
 // Vô hiệu hóa người dùng
 app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
@@ -446,31 +468,95 @@ app.put("/user/activate/:id", async (req: Request, res: Response) => {
   }
 });
 
+// Thêm danh mục
+app.post("/addcategory", async (req: Request, res: Response) => {
+  try {
+    const newCategory = new category({ ...req.body, status: 'active' }); // Thiết lập status mặc định là 'active'
+    await newCategory.save();
+    res.status(201).json({
+      message: "Thêm Category thành công",
+      category: newCategory,
+      status: 200,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Lỗi thêm mới danh mục" });
+  }
+});
+
+// Vô hiệu hóa danh mục
+app.put("/category/deactivate/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const categoryToUpdate = await category.findByIdAndUpdate(id, { status: 'deactive' }, { new: true });
+    if (!categoryToUpdate) {
+      return res.status(404).json({ message: "Không tìm thấy danh mục để vô hiệu hóa" });
+    }
+    res.json({ message: "Danh mục đã được vô hiệu hóa", category: categoryToUpdate });
+  } catch (error) {
+    console.error("Error deactivating category:", error);
+    res.status(500).json({ message: "Lỗi khi vô hiệu hóa danh mục" });
+  }
+});
+
+// Kích hoạt lại danh mục
+app.put("/category/activate/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const categoryToUpdate = await category.findByIdAndUpdate(id, { status: 'active' }, { new: true });
+    if (!categoryToUpdate) {
+      return res.status(404).json({ message: "Không tìm thấy danh mục để kích hoạt lại" });
+    }
+    res.json({ message: "Danh mục đã được kích hoạt lại", category: categoryToUpdate });
+  } catch (error) {
+    console.error("Error activating category:", error);
+    res.status(500).json({ message: "Lỗi khi kích hoạt lại danh mục" });
+  }
+});
+
+// Lấy danh mục
+app.get("/category", async (req: Request, res: Response) => {
+  try {
+    const categories = await category.find({ status: 'active' }); // Chỉ lấy danh mục hoạt động
+    res.json(categories);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Lỗi khi lấy thông tin danh mục" });
+  }
+});
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+app.get('/deactive/:id', (req, res) => {
+  const itemId = req.params.id;
+  // Gọi hàm để deactive item với id là itemId
+  res.send(`Deactivating item with ID ${itemId}`);
+});
 
 
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
 });
+
+
+// tìm kiếm và lọc sản phẩm theo tên sản phẩm và theo danh mục và theo giá
+// app.get('/products/search', async (rep, res) => {
+//   try {
+//     const { name, category, minPrice, maxPrice } = rep.query;
+//     let products = await product.find();
+//     // Lọc sản phẩm theo tên sản phẩm
+//     if (name) {
+//       products = products.filter(product => product.name.toLowerCase().includes(name.toLowerCase()));
+//     }
+//     // Lọc sản phẩm theo danh mục
+//     if (category) {
+//       products = products.filter(product => product.category === category);
+//     }
+//     // Lọc sản phẩm theo giá
+//     if (minPrice && maxPrice) {
+//       products = products.filter(product => product.price >= parseInt(minPrice) && product.price <= parseInt(maxPrice));
+//     } res.json(products);
+
+//   }catch(error){
+//     res.status(500).json({error:'Lỗi máy chủ nội bộ'});
+//   }
+// });
