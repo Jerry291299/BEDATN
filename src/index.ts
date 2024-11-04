@@ -417,27 +417,10 @@ app.post("/addcategory", async (req: Request, res: Response) => {
 //   }
 // })
 //
-app.put('/categories/:id/deactivate', (req, res) => {
-  const categoryId = req.params.id;
-
-  // Logic xử lý deactive mục với ID categoryId
-
-  // app.delete("/category/:id", async (req: Request, res: Response) => {
-  //   try {
-  //     const { id } = req.params;
-  //     const del = await category.findByIdAndDelete(id);
-  //     res.json({
-  //       message: "Danh mục đã xoá thành công",
-  //       id: id,
-  //       test: del,
-  //     });
-  //   } catch (error) {
-  //     console.log(error);
-  //     res.status(500).json({ message: "Lỗi khi xóa danh mục" });
-  //   }
-  // });
-  res.json({ message: 'Category deactivated' });
-});
+// app.put('/categories/:id/deactivate', (req, res) => {
+//   const categoryId = req.params.id;
+//   res.json({ message: 'Category deactivated' });
+// });
 // Vô hiệu hóa người dùng
 app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
   try {
