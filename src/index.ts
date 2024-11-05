@@ -1,4 +1,4 @@
-import product, { Product } from './product';
+
 // src/index.ts
 import express, { Request, Response } from "express";
 import mongoose from "mongoose";
@@ -10,6 +10,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import category from "./danhmuc";
 import Cart from "./cart";
+import product from "./product";
 
 var cors = require("cors");
 const fs = require("fs");
@@ -315,7 +316,7 @@ app.get("/product/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const Product = await product.findById(id).populate("category", "name");
-    res.json(product);
+    res.json(Product);
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Lỗi khi lấy thông tin sản phẩm" });
