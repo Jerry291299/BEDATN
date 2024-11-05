@@ -1,6 +1,6 @@
 
 // src/index.ts
-import express, { Request, Response } from "express";
+import express, { Request, Response, Router } from "express";
 import mongoose from "mongoose";
 import bodyParser from "body-parser";
 import User from "./user";
@@ -11,6 +11,7 @@ import jwt from "jsonwebtoken";
 import category from "./danhmuc";
 import Cart from "./cart";
 import product from "./product";
+import Order from "./order";
 
 var cors = require("cors");
 const fs = require("fs");
@@ -23,7 +24,7 @@ const {
   cloudinaryDeleteImg,
 } = require("./utils/Cloudinary");
 const JWT_SECRET = process.env.JWT_SECRET as string;
-
+const router = Router();
 mongoose
   .connect(
     "mongodb+srv://ungductrungtrung:Jerry2912@cluster0.4or3syc.mongodb.net/",
@@ -514,6 +515,43 @@ app.get('/deactive/:id', (req, res) => {
   const itemId = req.params.id;
   // Gọi hàm để deactive item với id là itemId
   res.send(`Deactivating item with ID ${itemId}`);
+});
+
+
+
+
+app.post('/order', async (req: Request, res: Response) => {
+  const { userId, items } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: "Invalid userId format" });
+  }
+
+  try {
+    // Kiểm tra xem giỏ hàng của người dùng có các sản phẩm này không
+    const cart = await Cart.findOne({ userId });
+
+    if (!cart) {
+      return res.status(404).json({ message: "Cart is empty" });
+    }
+
+    // Tạo một đơn hàng mới dựa trên thông tin từ giỏ hàng
+    const newOrder = await Order.create({
+      userId,
+      items: cart.items,
+      status: 'Pending',
+      totalAmount: cart.items.reduce((acc, item) => acc + item.price * item.quantity, 0),
+      createdAt: new Date(),
+    });
+
+    // Xoá các sản phẩm đã đặt hàng khỏi giỏ hàng
+    await Cart.updateOne({ userId }, { items: [] });
+
+    res.status(201).json({ message: "Order placed successfully", order: newOrder });
+  } catch (error) {
+    console.error("Error placing order:", error);
+    res.status(500).json({ message: "Error placing order" });
+  }
 });
 
 
