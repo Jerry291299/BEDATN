@@ -6,7 +6,7 @@ export interface User extends Document {
   email: string;
   password: string;
   role: string;
-  isActive: boolean;
+  active: boolean;
 }
 
 const UserSchema: Schema = new Schema({

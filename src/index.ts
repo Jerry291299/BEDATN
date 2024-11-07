@@ -204,14 +204,21 @@ app.post("/login", async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
+
     if (!user) {
       return res.status(404).json({
         message: "User not found!",
       });
     }
 
+    // Check if the account is active
+    if (!user.active) {
+      return res.status(403).json({
+        message: "Account is disabled. Please contact support.",
+      });
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    console.log(user);
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid password!" });
     }
@@ -220,7 +227,7 @@ app.post("/login", async (req: Request, res: Response) => {
       expiresIn: process.env.EXPIRES_TOKEN,
     });
 
-    // Kiểm tra vai trò của người dùng
+    // Respond based on user role
     if (user.role === "admin") {
       res.json({
         message: "Welcome Admin!",
@@ -260,9 +267,10 @@ app.post("/login", async (req: Request, res: Response) => {
     }
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error Logging in!" });
+    res.status(500).json({ message: "Error logging in!" });
   }
 });
+
 app.post("/register", async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
