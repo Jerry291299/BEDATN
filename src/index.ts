@@ -290,24 +290,33 @@ app.post("/register", async (req: Request, res: Response) => {
 
 app.post("/product/add", async (req: Request, res: Response) => {
   try {
-    const { name, price, img, soLuong, moTa, categoryID } = req.body;
-    console.log(categoryID);
+      const { name, price, img, soLuong, moTa, categoryID, status } =
+          req.body;
+      console.log(categoryID);
 
-    const Category = await category.findById(categoryID);
+      const Category = await category.findById(categoryID);
 
-    if (!Category) {
-      return res.status(404).json({ message: "Không tìm thấy danh mục" });
-    }
-    const newProduct = new product({ name, price, img, soLuong, moTa, category: categoryID });
-    await newProduct.save();
-    res.status(201).json({
-      message: "Thêm sản phẩm thành công",
-      product: newProduct,
-      status: 200,
-    });
+      if (!Category) {
+          return res.status(404).json({ message: "Không tìm thấy danh mục" });
+      }
+      const newProduct = new product({
+          name,
+          price,
+          img,
+          soLuong,
+          moTa,
+          category: categoryID,
+          status,
+      });
+      await newProduct.save();
+      res.status(201).json({
+          message: "Thêm sản phẩm thành công",
+          product: newProduct,
+          status: 200,
+      });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Lỗi thêm mới" });
+      console.log(error);
+      res.status(500).json({ message: "Lỗi thêm mới" });
   }
 });
 
@@ -590,3 +599,55 @@ app.listen(PORT, () => {
 //     res.status(500).json({error:'Lỗi máy chủ nội bộ'});
 //   }
 // });
+
+// deactive product
+app.put("/product/deactivate/:id", async (req: Request, res: Response) => {
+  try {
+      const { id } = req.params;
+      const productToUpdate = await product.findByIdAndUpdate(
+          id,
+          { status: false },
+          { new: true }
+      );
+
+      if (!productToUpdate) {
+          return res
+              .status(404)
+              .json({ message: "Không tìm thấy sản phẩm để vô hiệu hóa" });
+      }
+
+      res.json({
+          message: "Sản phẩm đã được vô hiệu hóa",
+          product: productToUpdate,
+      });
+  } catch (error) {
+      console.error("Error deactivating product:", error);
+      res.status(500).json({ message: "Lỗi khi vô hiệu hóa sản phẩm" });
+  }
+});
+
+// active product
+app.put("/product/activate/:id", async (req: Request, res: Response) => {
+  try {
+      const { id } = req.params;
+      const productToUpdate = await product.findByIdAndUpdate(
+          id,
+          { status: true },
+          { new: true }
+      );
+
+      if (!productToUpdate) {
+          return res
+              .status(404)
+              .json({ message: "Không tìm thấy sản phẩm để kích hoạt lại" });
+      }
+
+      res.json({
+          message: "Sản phẩm đã được kích hoạt lại",
+          product: productToUpdate,
+      });
+  } catch (error) {
+      console.error("Error activating product:", error);
+      res.status(500).json({ message: "Lỗi khi kích hoạt lại sản phẩm" });
+  }
+});

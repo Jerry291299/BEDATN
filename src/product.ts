@@ -9,6 +9,7 @@ export interface Product extends Document {
   soLuong: number;
   moTa: string;
   category: mongoose.Schema.Types.ObjectId;
+  status: boolean;
 }
 
 const ProductSchema: Schema = new Schema({
@@ -18,6 +19,7 @@ const ProductSchema: Schema = new Schema({
   soLuong: { type: Number, required: true },
   moTa: { type: String, required: true },
   category: { type: Schema.Types.ObjectId, ref: "Category", required: true },
+  status: { type: Boolean , required: true }
 });
 
 export default mongoose.model<Product>("Product", ProductSchema);
