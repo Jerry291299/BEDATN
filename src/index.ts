@@ -92,6 +92,45 @@ app.put("/user/:id", async (req: Request, res: Response) => {
     }
 });
 
+app.put("/:id/cartupdate", async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { productId, newQuantity } = req.body;
+  
+    if (!productId || newQuantity == null || newQuantity <= 0) {
+      return res.status(400).json({ message: "Invalid product ID or quantity" });
+    }
+  
+    try {
+      // Look for the cart based on the userId
+      const cart = await Cart.findOne({ userId: id });
+  
+      if (!cart) {
+        return res.status(404).json({ message: "Cart not found" });
+      }
+  
+      // Find the product in the cart
+      const productIndex = cart.items.findIndex(
+        (item) => item.productId.toString() === productId
+      );
+  
+      if (productIndex === -1) {
+        return res.status(404).json({ message: "Product not found in cart" });
+      }
+  
+      // Update the product quantity
+      cart.items[productIndex].quantity = newQuantity;
+  
+      // Save the updated cart
+      await cart.save();
+  
+      // Return the updated cart data
+      res.status(200).json(cart);
+    } catch (error) {
+      console.error("Error updating cart:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
 app.post("/cart/add", async (req: Request, res: Response) => {
     const { userId, items } = req.body;
 
@@ -329,6 +368,26 @@ app.get("/product", async (req: Request, res: Response) => {
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "Lỗi khi lấy thông tin sản phẩm" });
+    }
+});
+
+app.get("/product-test", async (req: Request, res: Response) => {
+    try {
+        const { page = 1, limit = 10 } = req.query; // Default values for page and limit
+
+        // Fetch paginated products with category populated
+        const options = {
+            page: parseInt(page as string, 10),
+            limit: parseInt(limit as string, 10),
+            populate: { path: "category", select: "name" },
+        };
+
+        const products = await product.paginate({}, options);
+
+        res.json(products);
+    } catch (error) {
+        console.error("Error fetching products:", error);
+        res.status(500).json({ message: "Error retrieving product information" });
     }
 });
 
