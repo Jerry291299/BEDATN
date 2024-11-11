@@ -714,10 +714,8 @@ app.post('/order', async (req: Request, res: Response) => {
 });
 
 
-app.listen(PORT, () => {
-    console.log(`Server đang lắng nghe tại cổng ${PORT}`);
-});
-5
+
+
 // tìm kiếm và lọc sản phẩm theo tên sản phẩm và theo danh mục và theo giá
 // app.get('/products/search', async (rep, res) => {
 //   try {
@@ -791,4 +789,8 @@ app.put("/product/activate/:id", async (req: Request, res: Response) => {
       console.error("Error activating product:", error);
       res.status(500).json({ message: "Lỗi khi kích hoạt lại sản phẩm" });
   }
+});
+
+app.listen(PORT, () => {
+    console.log(`Server đang lắng nghe tại cổng ${PORT}`);
 });
