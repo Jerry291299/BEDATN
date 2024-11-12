@@ -679,39 +679,32 @@ app.get("/deactive/:id", (req, res) => {
 
 
 
-app.post('/order', async (req: Request, res: Response) => {
-  const { userId, items } = req.body;
-
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    return res.status(400).json({ message: "Invalid userId format" });
-  }
-
-  try {
-    // Kiểm tra xem giỏ hàng của người dùng có các sản phẩm này không
-    const cart = await Cart.findOne({ userId });
-
-    if (!cart) {
-      return res.status(404).json({ message: "Cart is empty" });
+app.post("/order/confirm", async (req: Request, res: Response) => {
+    const { userId, items, totalAmount, paymentMethod, customerDetails } = req.body;
+  
+    try {
+      if (!userId || !items || !totalAmount || !paymentMethod || !customerDetails) {
+        return res.status(400).json({ message: "Missing order data" });
+      }
+  
+      // Create a new order document
+      const order = new Order({
+        userId: (userId),
+        items,
+        totalAmount,
+        paymentMethod,
+        status: "pending",
+        createdAt: new Date(),
+        customerDetails,
+      });
+  
+      await order.save();
+      res.status(201).json({ message: "Order confirmed", orderId: order._id });
+    } catch (error) {
+      console.error("Order confirmation error:", error);
+      res.status(500).json({ message: "Order confirmation failed", error });
     }
-
-    // Tạo một đơn hàng mới dựa trên thông tin từ giỏ hàng
-    const newOrder = await Order.create({
-      userId,
-      items: cart.items,
-      status: 'Pending',
-      totalAmount: cart.items.reduce((acc, item) => acc + item.price * item.quantity, 0),
-      createdAt: new Date(),
-    });
-
-    // Xoá các sản phẩm đã đặt hàng khỏi giỏ hàng
-    await Cart.updateOne({ userId }, { items: [] });
-
-    res.status(201).json({ message: "Order placed successfully", order: newOrder });
-  } catch (error) {
-    console.error("Error placing order:", error);
-    res.status(500).json({ message: "Error placing order" });
-  }
-});
+  });
 
 
 
