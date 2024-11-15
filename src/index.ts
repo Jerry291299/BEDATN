@@ -35,7 +35,7 @@ mongoose
   .then(() => console.log("DB connection successful"))
   .catch((err) => console.log(err));
 
-app.use(cors()); // Enable CORS for all routes
+app.use(cors()); 
 app.use(bodyParser.json());
 
 app.post(
@@ -101,14 +101,12 @@ app.put("/:id/cartupdate", async (req: Request, res: Response) => {
   }
 
   try {
-    // Look for the cart based on the userId
     const cart = await Cart.findOne({ userId: id });
 
     if (!cart) {
       return res.status(404).json({ message: "Cart not found" });
     }
 
-    // Find the product in the cart
     const productIndex = cart.items.findIndex(
       (item) => item.productId.toString() === productId
     );
@@ -117,13 +115,10 @@ app.put("/:id/cartupdate", async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Product not found in cart" });
     }
 
-    // Update the product quantity
     cart.items[productIndex].quantity = newQuantity;
-
-    // Save the updated cart
     await cart.save();
 
-    // Return the updated cart data
+    
     res.status(200).json(cart);
   } catch (error) {
     console.error("Error updating cart:", error);
@@ -199,7 +194,7 @@ app.delete("/cart/remove", async (req: Request, res: Response) => {
       );
 
       if (productIndex > -1) {
-        cart.items.splice(productIndex, 1); // Remove the item from the cart
+        cart.items.splice(productIndex, 1); 
         await cart.save();
         return res.status(200).json(cart);
       } else {
@@ -244,7 +239,6 @@ app.post("/login", async (req: Request, res: Response) => {
       });
     }
 
-    // Check if the account is active
     if (!user.active) {
       return res.status(403).json({
         message: "Account is disabled. Please contact support.",
@@ -260,7 +254,6 @@ app.post("/login", async (req: Request, res: Response) => {
       expiresIn: process.env.EXPIRES_TOKEN,
     });
 
-    // Respond based on user role
     if (user.role === "admin") {
       res.json({
         message: "Welcome Admin!",
@@ -589,7 +582,7 @@ app.put("/user/activate/:id", async (req: Request, res: Response) => {
 // Thêm danh mục
 app.post("/addcategory", async (req: Request, res: Response) => {
   try {
-    const newCategory = new category({ ...req.body, status: "active" }); // Thiết lập status mặc định là 'active'
+    const newCategory = new category({ ...req.body, status: "active" }); 
     await newCategory.save();
     res.status(201).json({
       message: "Thêm Category thành công",
@@ -727,7 +720,6 @@ app.post("/order/confirm", async (req: Request, res: Response) => {
 //   }
 // });
 
-// deactive product
 app.put("/product/deactivate/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -753,7 +745,7 @@ app.put("/product/deactivate/:id", async (req: Request, res: Response) => {
   }
 });
 
-// active product
+
 app.put("/product/activate/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -776,6 +768,21 @@ app.put("/product/activate/:id", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error activating product:", error);
     res.status(500).json({ message: "Lỗi khi kích hoạt lại sản phẩm" });
+  }
+});
+
+app.get("/orders", async (req: Request, res: Response) => {
+  const { userId } = req.query; // Optional query parameter to filter by userId
+
+  try {
+      // Find orders, optionally filter by userId if provided
+      const query = userId ? { userId } : {};
+      const orders = await Order.find(query).populate("userId", "name email").exec();
+      
+      res.status(200).json(orders);
+  } catch (error) {
+      console.error("Error fetching orders:", error);
+      res.status(500).json({ message: "Failed to retrieve orders", error });
   }
 });
 

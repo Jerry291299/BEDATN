@@ -32,12 +32,12 @@ const orderSchema = new Schema<IOrder>({
   totalAmount: { type: Number, required: true },
   status: { type: String, default: "pending" },
   createdAt: { type: Date, default: Date.now },
-  customerDetails: { // Add customer details
+  customerDetails: { 
     name: { type: String, required: true },
     phone: { type: String, required: true },
     email: { type: String, required: true },
     address: { type: String, required: true },
-    notes: { type: String }, // Optional field for notes
+    notes: { type: String },
   },
 });
 
