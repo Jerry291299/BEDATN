@@ -11,6 +11,7 @@ import category from "./danhmuc";
 import Cart from "./cart";
 import product from "./product";
 import Order from "./order";
+import material from "./chatlieu";
 
 var cors = require("cors");
 const fs = require("fs");
@@ -653,6 +654,102 @@ app.get("/category", async (req: Request, res: Response) => {
     res.status(500).json({ message: "Lỗi khi lấy thông tin danh mục" });
   }
 });
+
+app.get("/deactive/:id", (req, res) => {
+  const itemId = req.params.id;
+  // Gọi hàm để deactive item với id là itemId
+  res.send(`Deactivating item with ID ${itemId}`);
+});
+
+
+// Materal 
+app.post("/addmaterial", async (req: Request, res: Response) => {
+  try {
+    const newMaterial = new material({ ...req.body, status: "active" }); 
+    await newMaterial.save();
+    res.status(201).json({
+      message: "Thêm Material thành công",
+      material: newMaterial,
+      status: 200,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Lỗi thêm mới vật liệu" });
+  }
+});
+
+// Vô hiệu hóa vật liệu
+app.put("/material/deactivate/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const materialToUpdate = await material.findByIdAndUpdate(
+      id,
+      { status: "deactive" },
+      { new: true }
+    );
+    if (!materialToUpdate) {
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy vật liệu để vô hiệu hóa" });
+    }
+    res.json({
+      message: "Vật liệu đã được vô hiệu hóa",
+      material: materialToUpdate,
+    });
+  } catch (error) {
+    console.error("Error deactivating material:", error);
+    res.status(500).json({ message: "Lỗi khi vô hiệu hóa vật liệu" });
+  }
+});
+
+// Kích hoạt lại vật liệu
+app.put("/material/activate/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const materialToUpdate = await material.findByIdAndUpdate(
+      id,
+      { status: "active" },
+      { new: true }
+    );
+    if (!materialToUpdate) {
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy vật liệu để kích hoạt lại" });
+    }
+    res.json({
+      message: "Vật liệu đã được kích hoạt lại",
+      material: materialToUpdate,
+    });
+  } catch (error) {
+    console.error("Error activating material:", error);
+    res.status(500).json({ message: "Lỗi khi kích hoạt lại vật liệu" });
+  }
+});
+
+// Lấy vật liệu
+app.get("/material", async (req: Request, res: Response) => {
+  try {
+    const materials = await material.find({ status: "active" }); // Chỉ lấy vật liệu hoạt động
+    res.json(materials);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Lỗi khi lấy thông tin vật liệu" });
+  }
+});
+
+app.put("/updatematerial/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params; // Lấy ID từ params
+    const updateMaterial = await material.findByIdAndUpdate(id, req.body, {
+      new: true, // Trả về tài liệu đã được cập nhật
+    });
+    res.json(updateMaterial); // Gửi lại tài liệu đã cập nhật
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Lỗi khi cập nhật Chất liệu" });
+  }
+});
+
 
 app.get("/deactive/:id", (req, res) => {
   const itemId = req.params.id;
