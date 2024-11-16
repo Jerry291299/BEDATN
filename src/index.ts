@@ -333,7 +333,7 @@ app.post("/product/add", async (req: Request, res: Response) => {
       category: categoryID,
       status,
     });
-    await newProduct.save();
+    await newProduct.save(); 
     res.status(201).json({
       message: "Thêm sản phẩm thành công",
       product: newProduct,
