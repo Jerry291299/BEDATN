@@ -868,11 +868,11 @@ app.put("/product/activate/:id", async (req: Request, res: Response) => {
   }
 });
 
-app.get("/orders", async (req: Request, res: Response) => { // API get don hàng trong admin
-  const { userId } = req.query; 
+app.get("/orders", async (req: Request, res: Response) => {
+  const { userId } = req.query; // Optional query parameter to filter by userId
 
   try {
-      
+      // Find orders, optionally filter by userId if provided
       const query = userId ? { userId } : {};
       const orders = await Order.find(query).populate("userId", "name email").exec();
       
@@ -882,7 +882,6 @@ app.get("/orders", async (req: Request, res: Response) => { // API get don hàng
       res.status(500).json({ message: "Failed to retrieve orders", error });
   }
 });
-
 
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
