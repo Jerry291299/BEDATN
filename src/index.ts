@@ -66,7 +66,7 @@ app.post(
     }
   }
 );
-app.get("/users", async (req: Request, res: Response) => {
+app.get("/usersaccount", async (req: Request, res: Response) => {
   try {
     const users = await User.find();
     res.json(users);
