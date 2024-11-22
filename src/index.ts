@@ -321,6 +321,28 @@ app.post("/login", async (req: Request, res: Response) => {
     }
 });
 
+// Update user role
+app.put('/admin/users/updateuser/:id', async (req: Request, res: Response) => {
+    const { role } = req.body;
+    const userId = req.params.id;
+
+    try {
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.role = role; // Update the role
+        await user.save();
+
+        res.status(200).json({ message: 'User role updated successfully', user });
+    } catch (error) {
+        console.error('Error updating user role:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+
 app.post("/register", async (req: Request, res: Response) => {
     try {
         const { name, email, password } = req.body;
@@ -396,7 +418,7 @@ app.get("/product", async (req: Request, res: Response) => {
 
 app.get("/product-test", async (req: Request, res: Response) => {
     try {
-        const { page = 1, limit = 10 } = req.query; 
+        const { page = 1, limit = 10 } = req.query;
 
         const options = {
             page: parseInt(page as string, 10),
@@ -564,34 +586,34 @@ app.post("/addcategory", async (req: Request, res: Response) => {
 });
 
 //  Categoty : Delete
-app.delete("/category/:id",async (req:Request,res:Response)=>{
-  try{
-    const {id} =req.params;
-    const del = await category.findByIdAndDelete(id);
-    res.json({
-      message:"Danh mục đã xoá thành công",
-      id: id,
-      test: del,
-    });
-  }catch(error){
-    console.log(error);
-    res.status(500).json({ message: "Lỗi khi xóa danh mục" });
-  }
+app.delete("/category/:id", async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const del = await category.findByIdAndDelete(id);
+        res.json({
+            message: "Danh mục đã xoá thành công",
+            id: id,
+            test: del,
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "Lỗi khi xóa danh mục" });
+    }
 })
 
-app.delete("/product/:id",async (req:Request,res:Response)=>{
-  try{
-    const {id} =req.params;
-    const del = await product.findByIdAndDelete(id);
-    res.json({
-      message:"Sp đã xoá thành công",
-      id: id,
-      test: del,
-    });
-  }catch(error){
-    console.log(error);
-    res.status(500).json({ message: "Lỗi khi xóa SP" });
-  }
+app.delete("/product/:id", async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const del = await product.findByIdAndDelete(id);
+        res.json({
+            message: "Sp đã xoá thành công",
+            id: id,
+            test: del,
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "Lỗi khi xóa SP" });
+    }
 })
 //
 // app.put('/categories/:id/deactivate', (req, res) => {
