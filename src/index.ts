@@ -12,6 +12,7 @@ import Cart from "./cart";
 import product from "./product";
 import Order from "./order";
 import material from "./material";
+import Tintuc from "./posts";
 
 import crypto from "crypto";
 var cors = require("cors");
@@ -942,6 +943,63 @@ app.get("/orders", async (req: Request, res: Response) => {
         res.status(500).json({ message: "Failed to retrieve orders", error });
     }
 });
+
+app.get("/posts", async (req: Request, res: Response) => {
+    try {
+        const query = await Tintuc.find();
+        
+        if(query.length === 0) {
+            return res.status(404).json({
+                message: "Chưa có bài viết nào!"
+            })
+        }
+
+        return res.status(200).json(query);
+    } catch (error) {
+        console.error("Error fetching orders:", error);
+        return res.status(500).json({ message: "Failed to retrieve orders", error });
+    }
+})
+app.post("/posts/create", async (req: Request, res: Response) => {
+    const { title, content, descriptions, img} = req.body
+    try {
+        if(title.length === 0) {
+            return res.status(403).json({
+                message: "Tiêu đề bài viết không được để trống"
+            })
+        }
+
+        if(content.length === 0) {
+            return res.status(403).json({
+                message: "Nội dung bài viết không được để trống"
+            })
+        }
+
+        // Xử lí ảnh bài viết
+
+        // -------------------
+
+        const newTintuc = await Tintuc.create({
+            title, content, descriptions, img
+        });
+
+        if(!newTintuc){
+            return res.status(403).json({
+                message: "Thêm bài viết không thành công!"
+            })
+        }
+
+        return res.status(200).json({
+            data: newTintuc,
+            message: "Thêm bài viết thành công!"
+        });
+    } catch (error) {
+        console.error("Error fetching orders:", error);
+        return res.status(500).json({ message: "Failed to retrieve orders", error });
+    }
+})
+
+
 app.get("/orders-list", async (req: Request, res: Response) => {
     try {
       const orders = await Order.find()
@@ -976,6 +1034,7 @@ app.get("/orders-list", async (req: Request, res: Response) => {
       res.status(500).json({ message: "Server error" });
     }
   });
+
 app.listen(PORT, () => {
     console.log(`Server đang lắng nghe tại cổng ${PORT}`);
 });
