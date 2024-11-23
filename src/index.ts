@@ -943,6 +943,7 @@ app.get("/orders", async (req: Request, res: Response) => {
         res.status(500).json({ message: "Failed to retrieve orders", error });
     }
 });
+
 app.get("/posts", async (req: Request, res: Response) => {
     try {
         const query = await Tintuc.find();
@@ -997,6 +998,42 @@ app.post("/posts/create", async (req: Request, res: Response) => {
         return res.status(500).json({ message: "Failed to retrieve orders", error });
     }
 })
+
+
+app.get("/orders-list", async (req: Request, res: Response) => {
+    try {
+      const orders = await Order.find()
+        .populate("userId", "name email") 
+        .populate("items.productId", "name price img")
+        .exec();
+  
+      if (orders.length === 0) {
+        return res.status(404).json({ message: "No orders found" });
+      }
+  
+      res.status(200).json(orders);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      res.status(500).json({ message: "Failed to retrieve orders", error });
+    }
+  });
+  app.put('/orders-list/:id', async (req, res) => {
+    try {
+      const orderId = req.params.id;
+      const updatedOrder = await Order.findByIdAndUpdate(
+        orderId,
+        { status: "delivered" },
+        { new: true } 
+      );
+      if (!updatedOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      res.json(updatedOrder);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
 
 app.listen(PORT, () => {
     console.log(`Server đang lắng nghe tại cổng ${PORT}`);

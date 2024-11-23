@@ -15,9 +15,10 @@ export interface IOrder extends Document {
     address: string;
     notes?: string;
   };
+  paymentMethod: string; 
 }
 
-// Define the order schema
+
 const orderSchema = new Schema<IOrder>({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   items: [
@@ -32,14 +33,16 @@ const orderSchema = new Schema<IOrder>({
   totalAmount: { type: Number, required: true },
   status: { type: String, default: "pending" },
   createdAt: { type: Date, default: Date.now },
-  customerDetails: { 
+  customerDetails: {
     name: { type: String, required: true },
     phone: { type: String, required: true },
     email: { type: String, required: true },
     address: { type: String, required: true },
     notes: { type: String },
   },
+  paymentMethod: { type: String, required: true },
 });
+
 
 const Order = mongoose.model<IOrder>("Order", orderSchema);
 
