@@ -1017,21 +1017,25 @@ app.get("/orders-list", async (req: Request, res: Response) => {
       res.status(500).json({ message: "Failed to retrieve orders", error });
     }
   });
-  app.put('/orders-list/:id', async (req, res) => {
+  app.put("/orders-list/:id", async (req, res) => {
     try {
-      const orderId = req.params.id;
+      const { id } = req.params;
+      const { status, paymentMethod } = req.body;
+  
       const updatedOrder = await Order.findByIdAndUpdate(
-        orderId,
-        { status: "delivered" },
+        id,
+        { status, paymentMethod },
         { new: true } 
       );
+  
       if (!updatedOrder) {
         return res.status(404).json({ message: "Order not found" });
       }
-      res.json(updatedOrder);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Server error" });
+  
+      res.status(200).json(updatedOrder); 
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Error updating order" });
     }
   });
 
