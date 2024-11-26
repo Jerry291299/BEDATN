@@ -1017,27 +1017,37 @@ app.get("/orders-list", async (req: Request, res: Response) => {
       res.status(500).json({ message: "Failed to retrieve orders", error });
     }
   });
-  app.put("/orders-list/:id", async (req, res) => {
+ 
+  app.get("/orders/:userId", async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const { page = 1, limit = 10 } = req.query; // Lấy thông tin phân trang từ query params
+  
     try {
-      const { id } = req.params;
-      const { status, paymentMethod } = req.body;
-  
-      const updatedOrder = await Order.findByIdAndUpdate(
-        id,
-        { status, paymentMethod },
-        { new: true } 
-      );
-  
-      if (!updatedOrder) {
-        return res.status(404).json({ message: "Order not found" });
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ message: "Invalid user ID format" });
       }
   
-      res.status(200).json(updatedOrder); 
+      const orders = await Order.find({ userId })
+        .populate("items.productId", "name price")
+        .sort({ createdAt: -1 })
+        .skip((+page - 1) * +limit)
+        .limit(+limit);
+  
+      const totalOrders = await Order.countDocuments({ userId });
+  
+      res.status(200).json({ 
+        orders, 
+        totalOrders,
+        totalPages: Math.ceil(totalOrders / +limit),
+        currentPage: +page 
+      });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Error updating order" });
+      console.error("Error fetching orders:", error);
+      res.status(500).json({ message: "Failed to fetch orders", error });
     }
   });
+  
+  
 
 app.listen(PORT, () => {
     console.log(`Server đang lắng nghe tại cổng ${PORT}`);
