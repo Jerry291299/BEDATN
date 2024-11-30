@@ -998,7 +998,32 @@ app.post("/posts/create", async (req: Request, res: Response) => {
         return res.status(500).json({ message: "Failed to retrieve orders", error });
     }
 })
+app.delete("/posts/delete/:id", async (req: Request, res: Response) => {
+    const { id } = req.params; // Lấy ID từ URL
 
+    try {
+        // Kiểm tra xem bài viết có tồn tại không
+        const existingPost = await Tintuc.findById(id);
+        if (!existingPost) {
+            return res.status(404).json({
+                message: "Bài viết không tồn tại.",
+            });
+        }
+
+        // Xóa bài viết
+        await existingPost.deleteOne();
+
+        return res.status(200).json({
+            message: "Xóa bài viết thành công.",
+        });
+    } catch (error) {
+        console.error("Error deleting post:", error);
+        return res.status(500).json({
+            message: "Đã xảy ra lỗi khi xóa bài viết.",
+            error,
+        });
+    }
+});
 
 app.get("/orders-list", async (req: Request, res: Response) => {
     try {
