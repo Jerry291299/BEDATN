@@ -797,43 +797,7 @@ app.get("/deactive/:id", (req, res) => {
   res.send(`Deactivating item with ID ${itemId}`);
 });
 
-app.post("/order/confirm", async (req: Request, res: Response) => {
-  const { userId, items, totalAmount, paymentMethod, customerDetails } =
-    req.body;
 
-  try {
-    if (
-      !userId ||
-      !items ||
-      !totalAmount ||
-      !paymentMethod ||
-      !customerDetails
-    ) {
-      return res.status(400).json({ message: "Missing order data" });
-    }
-
-    // Create a new order document
-    const order = new Order({
-      userId: userId,
-      items,
-      totalAmount,
-      paymentMethod,
-      status: "pending",
-      createdAt: new Date(),
-      customerDetails,
-    });
-
-    await order.save();
-    await Cart.findOneAndUpdate({ userId }, { items: [] });
-    res.status(201).json({
-      message: "Order confirmed and cart reset",
-      orderId: order._id,
-    });
-  } catch (error) {
-    console.error("Order confirmation error:", error);
-    res.status(500).json({ message: "Order confirmation failed", error });
-  }
-});
 
 // tìm kiếm và lọc sản phẩm theo tên sản phẩm và theo danh mục và theo giá
 // app.get('/products/search', async (rep, res) => {
@@ -1080,30 +1044,31 @@ app.put("/orders-list/:orderId", async (req, res) => {
 //vnpay
 
 app.post("/create-payment", async (req: Request, res: Response) => {
-  console.log("Route hit: /create-payment");
 
-  const { orderId, amount, bankCode } = req.body;
+  const { userId, amount,paymentMethod, bankCode, customerDetails, Items } = req.body;
   console.log("Payload received:", req.body);
 
-  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
     console.log("Invalid orderId format");
     return res.status(400).json({ message: "Invalid orderId format" });
   }
 
   try {
-    console.log("Received orderId:", orderId);
 
-    // Use the new keyword to correctly create an ObjectId
-    const order = await Order.findOne({
-      userId: new mongoose.Types.ObjectId(orderId),
+    
+
+    const order = await Order.create({
+      userId: req.body.userId,  
+      items: req.body.items,
+      amount: Number(req.body.amount) / 100,  
+      customerDetails: req.body.customerDetails,
+      paymentMethod: req.body.paymentMethod,
     });
+    console.log(order, "order");
+    
+    
 
-    if (!order) {
-      console.log("Order not found");
-      return res.status(404).json({ message: "Đơn hàng không tồn tại" });
-    }
-
-    const paymentUrl = createVNPayPaymentUrl(orderId, amount, bankCode, req);
+    const paymentUrl = createVNPayPaymentUrl({Id: userId, customerDetails: customerDetails, items: Items ,amount: amount, bankCode, req});
     console.log("Payment URL generated:", paymentUrl);
 
     return res.status(200).json({ paymentUrl });
@@ -1151,67 +1116,104 @@ app.get("/vnpay_return", function (req, res, next) {
   }
 });
 
-app.post("/payment/confirm", async (req, res) => {
-  try {
-    const {
-      vnp_Amount,
-      vnp_ResponseCode,
-      vnp_TransactionNo,
-      vnp_OrderInfo,
-      vnp_TxnRef,
-      vnp_SecureHash,
-      customerDetails,
-      paymentMethod,
-      items,
+app.post("/order/confirm", async (req: Request, res: Response) => {
+    const { userId, items, amount, paymentMethod, customerDetails } =
+      req.body;
+  
+    try {
+      if (
+        !userId ||
+        !items ||
+        !amount ||
+        !paymentMethod ||
+        !customerDetails
+      ) {
+        return res.status(400).json({ message: "Missing order data" });
+      }
+  
+      // Create a new order document
+      const order = new Order({
+        userId: userId,
+        items,
+        amount,
+        paymentMethod,
+        status: "pending",
+        createdAt: new Date(),
+        customerDetails,
+      });
+  
+      await order.save();
+      await Cart.findOneAndUpdate({ userId }, { items: [] });
+      res.status(201).json({
+        message: "Order confirmed and cart reset",
+        orderId: order._id,
+      });
+    } catch (error) {
+      console.error("Order confirmation error:", error);
+      res.status(500).json({ message: "Order confirmation failed", error });
     }
-     = req.body;
+  });
 
-    // Tham số bí mật từ VNPay
-    const secretKey = process.env.VNPAY_SECRET_KEY || "";
-
-    // Xác thực chữ ký
-    const params = { ...req.body };
-    delete params.vnp_SecureHash;
-    const sortedParams = Object.keys(params)
-      .sort()
-      .map((key) => `${key}=${params[key]}`)
-      .join("&");
-
-    const hash = crypto
-      .createHmac("sha512", secretKey)
-      .update(sortedParams)
-      .digest("hex");
-
-    if (hash !== vnp_SecureHash) {
-      return res.status(400).json({ message: "Xác thực không thành công" });
+  app.post("/order/confirmvnpay", async (req: Request, res: Response) => {
+    try {
+      const {
+        userId,
+        vnp_Amount,
+        vnp_OrderInfo,
+        vnp_ResponseCode,
+        vnp_TransactionNo,
+        customerDetails,
+        items,
+        paymentMethod,
+      } = req.body;
+  
+      // Validate input
+      if (!userId || !vnp_Amount || !vnp_ResponseCode || !vnp_TransactionNo || !paymentMethod) {
+        return res.status(400).json({ message: "Missing required fields." });
+      }
+  
+      // Check if payment was successful
+      if (vnp_ResponseCode !== "00") {
+        return res.status(400).json({ message: "Payment failed or is pending." });
+      }
+  
+      // Calculate amount (VNPay amount is in smallest currency unit)
+      const amount = vnp_Amount / 1;
+  
+      // Create the order
+      const newOrder = new Order({
+        userId,
+        items,
+        amount,
+        paymentstatus: "Đã thanh toán",
+        status: "pending", 
+        magiaodich: vnp_TransactionNo, 
+        customerDetails: {
+          name: customerDetails.name || "Unknown",
+          phone: customerDetails.phone || "Unknown",
+          email: customerDetails.email || "Unknown",
+          address: customerDetails.address || "Unknown",
+          notes: customerDetails.notes || "",
+        },
+        paymentMethod,
+      });
+  
+      // Save the order
+      const savedOrder = await newOrder.save();
+  
+      return res.status(201).json({ message: "Order saved successfully.", order: savedOrder });
+    } catch (error) {
+      console.error("Error saving order:", error);
+      return res.status(500).json({ message: "Failed to save the order.", error });
     }
-
-    // Kiểm tra mã phản hồi thanh toán
-    if (vnp_ResponseCode !== "00") {
-      return res.status(400).json({ message: "Thanh toán không thành công" });
-    }
-
-    // Lưu đơn hàng vào cơ sở dữ liệu
-    const order = await Order.create({
-      userId: User, // Lấy từ session hoặc JWT token
-      items: items, // Dữ liệu từ frontend
-      totalAmount: Number(vnp_Amount) / 100, // VNPay gửi về đơn vị nhỏ
-      status: "Paid",
-      customerDetails: customerDetails,
-      paymentMethod: paymentMethod,
-    });
-
-    // Xóa giỏ hàng sau khi đặt hàng thành công
-    await Order.deleteOne({ userId: User });
-
-    return res.status(200).json({
-      message: "Đơn hàng đã được đặt thành công",
-      order,
-    });
-  } catch (error) {
-    console.error("Lỗi xác nhận thanh toán:", error);
-    return res.status(500).json({ message: "Đã xảy ra lỗi hệ thống" });
-  }
-});app.listen(PORT, () => {
+  });
+  
+app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
 });
+
+// Ngân hàng	NCB
+// Số thẻ	9704198526191432198
+// Tên chủ thẻ	NGUYEN VAN A
+// Ngày phát hành	07/15
+// Mật khẩu OTP	123456

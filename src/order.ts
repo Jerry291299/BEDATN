@@ -5,9 +5,11 @@ import { ICartItem } from "./cart";
 export interface IOrder extends Document {
   userId: mongoose.Schema.Types.ObjectId;
   items: ICartItem[];
-  totalAmount: number;
+  amount: number;
   status: string;
+  paymentstatus: string;
   createdAt: Date;
+  magiaodich: string;
   customerDetails: {
     name: string;
     phone: string;
@@ -30,9 +32,13 @@ const orderSchema = new Schema<IOrder>({
       quantity: { type: Number, required: true },
     },
   ],
-  totalAmount: { type: Number, required: true },
+  amount: { type: Number, required: true },
   status: { type: String, default: "pending" },
+  paymentstatus: { type: String, 
+    // enum: ["chưa thanh toán", "Đã thanh toán","failed"], 
+    default: "chưa thanh toán"  },
   createdAt: { type: Date, default: Date.now },
+  magiaodich: { type: String, required: false },
   customerDetails: {
     name: { type: String, required: true },
     phone: { type: String, required: true },
