@@ -1243,7 +1243,7 @@ app.post("/order/confirm", async (req: Request, res: Response) => { // tien mat
     }
   });
 
-  app.post("/order/confirmvnpay", async (req: Request, res: Response) => { //vnpay
+  app.post("/order/confirmvnpay", async (req: Request, res: Response) => {
     try {
       const {
         userId,
@@ -1251,51 +1251,42 @@ app.post("/order/confirm", async (req: Request, res: Response) => { // tien mat
         vnp_OrderInfo,
         vnp_ResponseCode,
         vnp_TransactionNo,
-        customerDetails,
-        items,
         paymentMethod,
       } = req.body;
   
-      
       if (!userId || !vnp_Amount || !vnp_ResponseCode || !vnp_TransactionNo || !paymentMethod) {
-        return res.status(400).json({ message: "Missing required fields." });
+        return res.status(400).json({ message: "thiếu thông tin" });
       }
   
-      
       if (vnp_ResponseCode !== "00") {
-        return res.status(400).json({ message: "Payment failed or is pending." });
+        return res.status(400).json({ message: "thanh toán thất bại" });
+      }
+  
+  
+      
+      const cartUpdate = await Cart.findOneAndUpdate({ userId }, { items: [] });
+      if (!cartUpdate) {
+        return res.status(404).json({ message: "không tìm thấy giỏ hàng" });
       }
   
       
-      const amount = vnp_Amount / 1;
+      const updatedOrder = await Order.findOneAndUpdate(
+        { userId, status: "pending" },
+        { paymentstatus: "Đã Thanh toán", magiaodich: vnp_TransactionNo },
+        { new: true, sort: { createdAt: -1 } }
+      );
   
-      
-      const newOrder = new Order({
-        userId,
-        items,
-        amount,
-        paymentstatus: "Đã thanh toán",
-        status: "pending", 
-        magiaodich: vnp_TransactionNo, 
-        customerDetails: {
-          name: customerDetails.name || "Unknown",
-          phone: customerDetails.phone || "Unknown",
-          email: customerDetails.email || "Unknown",
-          address: customerDetails.address || "Unknown",
-          notes: customerDetails.notes || "",
-        },
-        paymentMethod,
-      });
+      if (!updatedOrder) {
+        return res.status(404).json({ message: "Đơn hàng ko tồn tại." });
+      }
   
-     
-      const savedOrder = await newOrder.save();
-  
-      return res.status(201).json({ message: "Order saved successfully.", order: savedOrder });
+      return res.status(201).json({ message: "Đơn hàng đặt thành công.", order: updatedOrder });
     } catch (error) {
-      console.error("Error saving order:", error);
-      return res.status(500).json({ message: "Failed to save the order.", error });
+      console.error("Error updating order:", error);
+      return res.status(500).json({ message: "Failed to update the order.", error });
     }
   });
+  
   
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
