@@ -907,6 +907,22 @@ app.get("/posts", async (req: Request, res: Response) => {
       .json({ message: "Failed to retrieve orders", error });
   }
 });
+app.get("/post/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const post = await Tintuc.findById(id);  // Thay 'product' bằng 'Tintuc'
+
+    if (!post) {
+      return res.status(404).json({ message: "Không tìm thấy bài viết" });
+    }
+
+    res.json(post);
+  } catch (error) {
+    console.error("Lỗi khi lấy bài viết:", error);
+    res.status(500).json({ message: "Lỗi khi lấy thông tin tin tức" });
+  }
+});
+
 app.post("/posts/create", async (req: Request, res: Response) => {
   const { title, content, descriptions, img } = req.body;
   try {
@@ -948,6 +964,50 @@ app.post("/posts/create", async (req: Request, res: Response) => {
     return res
       .status(500)
       .json({ message: "Failed to retrieve orders", error });
+  }
+});
+app.delete("/posts/:id", async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+      // Tìm và xóa bài viết theo ID
+      const deletedPost = await Tintuc.findByIdAndDelete(id);
+
+      if (!deletedPost) {
+          return res.status(404).json({ message: "Không tìm thấy bài viết" });
+      }
+
+      res.status(200).json({ message: "Xóa bài viết thành công", deletedPost });
+  } catch (error) {
+      console.error("Lỗi khi xóa bài viết:", error);
+      res.status(500).json({ message: "Lỗi máy chủ", error });
+  }
+});
+app.put("/updatePost/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Kiểm tra ID hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID không hợp lệ." });
+    }
+
+    // Tiến hành cập nhật
+    const updatedPost = await Tintuc.findByIdAndUpdate(
+      id,
+      req.body, // Dữ liệu cần cập nhật
+      { new: true, runValidators: true } // Tùy chọn trả về tài liệu mới và xác thực
+    );
+
+    // Kiểm tra nếu không tìm thấy bài viết
+    if (!updatedPost) {
+      return res.status(404).json({ message: "Không tìm thấy bài viết." });
+    }
+
+    res.status(200).json(updatedPost);
+  } catch (error) {
+    console.error("Lỗi khi cập nhật bài viết:", error);
+    res.status(500).json({ message: "Lỗi khi cập nhật bài viết." });
   }
 });
 
