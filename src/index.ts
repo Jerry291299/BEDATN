@@ -971,7 +971,7 @@ app.get("/orders-list", async (req: Request, res: Response) => {
 
 app.get("/orders/:userId", async (req: Request, res: Response) => {
   const { userId } = req.params;
-  const { page = 1, limit = 10 } = req.query; // Lấy thông tin phân trang từ query params
+  const { page = 1, limit = 10 } = req.query;
 
   try {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
@@ -999,48 +999,75 @@ app.get("/orders/:userId", async (req: Request, res: Response) => {
 });
 
 app.put("/orders-list/:orderId", async (req, res) => {
-    const { orderId } = req.params;
-    const { status, paymentMethod } = req.body;
-  
-    try {
-      // Step 1: Find the order to ensure it exists and retrieve the items
-      const order = await Order.findById(orderId);
-  
-      if (!order) {
-        return res.status(404).json({ message: "Order not found" });
-      }
-  
-      // Step 2: If the status is being updated to "failed", return quantities to inventory
-      if (status === "failed") {
-        const updatePromises = order.items.map((item) =>
-          Product.findByIdAndUpdate(
-            item.productId,
-            { $inc: { quantity: item.quantity } }, // Increment the product quantity
-            { new: true }
-          )
-        );
-  
-        await Promise.all(updatePromises); // Wait for all updates to complete
-      }
-  
-      // Step 3: Update the order status and payment method
-      const updatedOrder = await Order.findByIdAndUpdate(
-        orderId,
-        { status, paymentMethod },
-        { new: true }
-      );
-  
-      if (updatedOrder) {
-        res.status(200).json(updatedOrder);
-      } else {
-        res.status(404).json({ message: "Order not found after update" });
-      }
-    } catch (error) {
-      console.error("Error updating order:", error);
-      res.status(500).json({ message: "Internal Server Error" });
+  const { orderId } = req.params;
+  const { status, paymentMethod } = req.body;
+
+  try {
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
     }
-  });
-  
+
+    if (status === "failed") {
+      const updatePromises = order.items.map((item) =>
+        Product.findByIdAndUpdate(
+          item.productId,
+          { $inc: { quantity: item.quantity } },
+          { new: true }
+        )
+      );
+
+      await Promise.all(updatePromises);
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      { status, paymentMethod },
+      { new: true }
+    );
+
+    if (updatedOrder) {
+      res.status(200).json(updatedOrder);
+    } else {
+      res.status(404).json({ message: "Order not found after update" });
+    }
+  } catch (error) {
+    console.error("Error updating order:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/admin/stats", async (req, res) => {
+  try {
+    // Total Products Count
+    const totalProducts = await Product.countDocuments();
+
+    // Total Orders Count
+    const totalOrders = await Order.countDocuments();
+
+    // Delivered Orders Count (assuming status 'delivered')
+    const deliveredOrders = await Order.countDocuments({ status: "delivered" });
+
+    // Canceled Orders Count (assuming status 'canceled')
+    const canceledOrders = await Order.countDocuments({ status: "failed" });
+
+    // Send response with the statistics
+    const statistics = {
+      totalProducts,
+      totalOrders,
+      deliveredOrders,
+      canceledOrders,
+    };
+
+    res.json(statistics);
+  } catch (err) {
+    console.error("Error fetching statistics:", err);
+    res
+      .status(500)
+      .json({ message: "Failed to fetch statistics. Please try again later." });
+  }
+});
 //vnpay
 
 app.post("/create-payment", async (req: Request, res: Response) => {
