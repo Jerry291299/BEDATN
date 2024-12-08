@@ -1040,19 +1040,19 @@ app.put("/orders-list/:orderId", async (req, res) => {
 
 app.get("/api/admin/stats", async (req, res) => {
   try {
-    // Total Products Count
+  
     const totalProducts = await Product.countDocuments();
 
-    // Total Orders Count
+  
     const totalOrders = await Order.countDocuments();
 
-    // Delivered Orders Count (assuming status 'delivered')
+    
     const deliveredOrders = await Order.countDocuments({ status: "delivered" });
 
-    // Canceled Orders Count (assuming status 'canceled')
+   
     const canceledOrders = await Order.countDocuments({ status: "failed" });
 
-    // Send response with the statistics
+    
     const statistics = {
       totalProducts,
       totalOrders,
@@ -1068,6 +1068,8 @@ app.get("/api/admin/stats", async (req, res) => {
       .json({ message: "Failed to fetch statistics. Please try again later." });
   }
 });
+
+
 //vnpay
 
 app.post("/create-payment", async (req: Request, res: Response) => {
@@ -1084,14 +1086,14 @@ app.post("/create-payment", async (req: Request, res: Response) => {
 
     
 
-    const order = await Order.create({
-      userId: req.body.userId,  
-      items: req.body.items,
-      amount: Number(req.body.amount) / 100,  
-      customerDetails: req.body.customerDetails,
-      paymentMethod: req.body.paymentMethod,
-    });
-    console.log(order, "order");
+    // const order = await Order.create({
+    //   userId: req.body.userId,  
+    //   items: req.body.items,
+    //   amount: Number(req.body.amount) / 100,  
+    //   customerDetails: req.body.customerDetails,
+    //   paymentMethod: req.body.paymentMethod,
+    // });
+    // console.log(order, "order");
     
     
 
@@ -1105,13 +1107,13 @@ app.post("/create-payment", async (req: Request, res: Response) => {
   }
 });
 
-const vnp_TmnCode = process.env.VNP_TMNCODE || "6KV33Z7O"; // Mã Website của bạn
+const vnp_TmnCode = process.env.VNP_TMNCODE || "6KV33Z7O"; 
 const vnp_HashSecret =
-  process.env.VNP_HASHSECRET || "HID072I1H7DJ6HO5O92JMV2WX2HMDQRD"; // Chuỗi bí mật
+  process.env.VNP_HASHSECRET || "HID072I1H7DJ6HO5O92JMV2WX2HMDQRD"; 
 let vnp_Url: any =
-  process.env.VNP_URL || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"; // URL thanh toán
+  process.env.VNP_URL || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"; 
 const vnp_ReturnUrl =
-  process.env.VNP_RETURNURL || "http://localhost:3000/success"; // URL trả về của bạn
+  process.env.VNP_RETURNURL || "http://localhost:3000/success"; 
 
 app.get("/vnpay_return", function (req, res, next) {
   let vnp_Params = req.query;
@@ -1135,7 +1137,7 @@ app.get("/vnpay_return", function (req, res, next) {
   console.log("tsest vpay", vnp_Params["vnp_ResponseCode"]);
 
   if (secureHash === signed) {
-    //Kiem tra xem du lieu trong db co hop le hay khong va thong bao ket qua
+   
 
     res.render("success", { code: vnp_Params["vnp_ResponseCode"] });
   } else {
@@ -1143,7 +1145,7 @@ app.get("/vnpay_return", function (req, res, next) {
   }
 });
 
-app.post("/order/confirm", async (req: Request, res: Response) => {
+app.post("/order/confirm", async (req: Request, res: Response) => { // tien mat
     const { userId, items, amount, paymentMethod, customerDetails } =
       req.body;
   
@@ -1181,7 +1183,7 @@ app.post("/order/confirm", async (req: Request, res: Response) => {
     }
   });
 
-  app.post("/order/confirmvnpay", async (req: Request, res: Response) => {
+  app.post("/order/confirmvnpay", async (req: Request, res: Response) => { //vnpay
     try {
       const {
         userId,
@@ -1194,20 +1196,20 @@ app.post("/order/confirm", async (req: Request, res: Response) => {
         paymentMethod,
       } = req.body;
   
-      // Validate input
+      
       if (!userId || !vnp_Amount || !vnp_ResponseCode || !vnp_TransactionNo || !paymentMethod) {
         return res.status(400).json({ message: "Missing required fields." });
       }
   
-      // Check if payment was successful
+      
       if (vnp_ResponseCode !== "00") {
         return res.status(400).json({ message: "Payment failed or is pending." });
       }
   
-      // Calculate amount (VNPay amount is in smallest currency unit)
+      
       const amount = vnp_Amount / 1;
   
-      // Create the order
+      
       const newOrder = new Order({
         userId,
         items,
@@ -1225,7 +1227,7 @@ app.post("/order/confirm", async (req: Request, res: Response) => {
         paymentMethod,
       });
   
-      // Save the order
+     
       const savedOrder = await newOrder.save();
   
       return res.status(201).json({ message: "Order saved successfully.", order: savedOrder });
