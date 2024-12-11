@@ -400,7 +400,7 @@ app.get("/product", async (req: Request, res: Response) => {
 
 app.get("/product-test", async (req: Request, res: Response) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
+        const { page = 1, limit = 10, admin } = req.query;
 
         const options = {
             page: parseInt(page as string, 10),
@@ -411,7 +411,10 @@ app.get("/product-test", async (req: Request, res: Response) => {
             ],
         };
 
-        const products = await product.paginate({ status: true }, options);
+        // Kiểm tra query parameter 'admin'
+        const filter = admin === "true" ? { status: true } : {};
+
+        const products = await product.paginate(filter, options);
 
         res.json(products);
     } catch (error) {
@@ -664,18 +667,28 @@ app.post("/addcategory", async (req: Request, res: Response) => {
 app.put("/category/deactivate/:id", async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
+
+        // Deactivate the category
         const categoryToUpdate = await category.findByIdAndUpdate(
             id,
             { status: "deactive" },
             { new: true }
         );
+
         if (!categoryToUpdate) {
             return res
                 .status(404)
                 .json({ message: "Không tìm thấy danh mục để vô hiệu hóa" });
         }
+
+        // Deactivate all products in the category
+        const updatedProducts = await product.updateMany(
+            { category: id }, // Tìm tất cả sản phẩm có category trùng với id danh mục
+            { status: false } // Đặt trạng thái của sản phẩm thành 'false'
+        );
+
         res.json({
-            message: "Danh mục đã được vô hiệu hóa",
+            message: "Danh mục và các sản phẩm liên quan đã được vô hiệu hóa",
             category: categoryToUpdate,
         });
     } catch (error) {
@@ -688,18 +701,28 @@ app.put("/category/deactivate/:id", async (req: Request, res: Response) => {
 app.put("/category/activate/:id", async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
+
+        // Activate the category
         const categoryToUpdate = await category.findByIdAndUpdate(
             id,
             { status: "active" },
             { new: true }
         );
+
         if (!categoryToUpdate) {
             return res
                 .status(404)
                 .json({ message: "Không tìm thấy danh mục để kích hoạt lại" });
         }
+
+        // Activate all products in the category
+        const updatedProducts = await product.updateMany(
+            { category: id }, // Tìm tất cả sản phẩm có category trùng với id danh mục
+            { status: true } // Đặt trạng thái của sản phẩm thành 'true'
+        );
+
         res.json({
-            message: "Danh mục đã được kích hoạt lại",
+            message: "Danh mục và các sản phẩm liên quan đã được kích hoạt lại",
             category: categoryToUpdate,
         });
     } catch (error) {
