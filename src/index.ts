@@ -45,31 +45,33 @@ app.use(cors());
 app.use(bodyParser.json());
 
 app.post(
-    "/upload",
-    uploadPhoto.array("images", 10),
-    async (req: any, res: any) => {
-        try {
-            const uploader = (path: any) => cloudinaryUploadImg(path);
-            const urls = [];
-            const files = req.files;
-            for (const file of files) {
-                const { path } = file;
-                const newpath = await uploader(path);
-
-                urls.push(newpath);
-                fs.unlinkSync(path);
-            }
-            const images = urls.map((file) => {
-                return file;
-            });
-            res.status(201).json({
-                payload: images,
-                status: 200,
-            });
-        } catch (error: any) {
-            throw new Error(error);
-        }
+  "/upload",
+  uploadPhoto.array("images", 10),
+  async (req: any, res: any) => {
+    console.log("Files received in backend:", req.files);
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "No files uploaded" });
     }
+
+    try {
+      const uploader = (path: any) => cloudinaryUploadImg(path);
+      const urls = [];
+      for (const file of req.files) {
+        const { path } = file;
+        const newpath = await uploader(path);
+        urls.push(newpath);
+        fs.unlinkSync(path); // Remove file after upload
+      }
+
+      res.status(201).json({
+        payload: urls,
+        status: 200,
+      });
+    } catch (error: any) {
+      console.error("Upload error:", error.message);
+      res.status(500).json({ error: error.message });
+    }
+  }
 );
 app.get("/users", async (req: Request, res: Response) => {
     try {
