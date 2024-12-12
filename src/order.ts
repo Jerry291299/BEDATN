@@ -5,9 +5,11 @@ import { ICartItem } from "./cart";
 export interface IOrder extends Document {
   userId: mongoose.Schema.Types.ObjectId;
   items: ICartItem[];
-  totalAmount: number;
+  amount: number;
   status: string;
+  paymentstatus: string;
   createdAt: Date;
+  magiaodich: string;
   customerDetails: {
     name: string;
     phone: string;
@@ -15,9 +17,10 @@ export interface IOrder extends Document {
     address: string;
     notes?: string;
   };
+  paymentMethod: string; 
 }
 
-// Define the order schema
+
 const orderSchema = new Schema<IOrder>({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   items: [
@@ -29,17 +32,23 @@ const orderSchema = new Schema<IOrder>({
       quantity: { type: Number, required: true },
     },
   ],
-  totalAmount: { type: Number, required: true },
+  amount: { type: Number, required: true },
   status: { type: String, default: "pending" },
+  paymentstatus: { type: String, 
+    // enum: ["chưa thanh toán", "Đã thanh toán","failed"], 
+    default: "chưa thanh toán"  },
   createdAt: { type: Date, default: Date.now },
-  customerDetails: { 
+  magiaodich: { type: String, required: false },
+  customerDetails: {
     name: { type: String, required: true },
     phone: { type: String, required: true },
     email: { type: String, required: true },
     address: { type: String, required: true },
     notes: { type: String },
   },
+  paymentMethod: { type: String, required: true },
 });
+
 
 const Order = mongoose.model<IOrder>("Order", orderSchema);
 

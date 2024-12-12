@@ -11,8 +11,13 @@ import category from "./danhmuc";
 import Cart from "./cart";
 import product from "./product";
 import Order from "./order";
-import material from "./chatlieu";
+import material from "./material";
+import Tintuc from "./posts";
+
 import crypto from "crypto";
+import { createVNPayPaymentUrl, sortObject } from "./service/VNPay";
+import qs from "qs";
+import Product from "./product";
 var cors = require("cors");
 const fs = require("fs");
 const asyncHandler = require("express-async-handler");
@@ -36,95 +41,8 @@ mongoose
   .then(() => console.log("DB connection successful"))
   .catch((err) => console.log(err));
 
-app.use(cors()); 
+app.use(cors());
 app.use(bodyParser.json());
-
-// app.post("/payment/vnpay", async (req: Request, res: Response) => {
-//   const { orderId, amount, customerDetails } = req.body;
-
-//   try {
-//     const tmnCode = "YOUR_VNP_TMNCODE"; // Mã TmnCode từ VNPay
-//     const secretKey = "YOUR_VNP_HASHSECRET"; // Secret Key từ VNPay
-//     const vnpUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"; // URL VNPay
-//     const returnUrl = "http://localhost:3000/payment-success"; // URL trả về sau thanh toán
-
-//     // Tạo thông tin thanh toán
-//     const date = new Date();
-//     const createDate = date.toISOString().replace(/[-T:\.Z]/g, "").substring(0, 14);
-//     const orderInfo = `Thanh toán đơn hàng ${orderId}`;
-//     const orderType = "billpayment";
-
-//     const params: Record<string, string> = {
-//       vnp_Version: "2.1.0",
-//       vnp_Command: "pay",
-//       vnp_TmnCode: tmnCode,
-//       vnp_Amount: (Number(req.query.amount) * 100 || 0).toString(), // Xử lý số tiền
-//       vnp_CreateDate: createDate,
-//       vnp_CurrCode: "VND",
-//       vnp_IpAddr: (req.ip || "127.0.0.1") as string, // Địa chỉ IP
-//       vnp_Locale: (req.query.locale as string) || "vn", // Ngôn ngữ mặc định
-//       vnp_OrderInfo: (req.query.orderInfo as string) || "defaultOrderInfo", // Thông tin đơn hàng
-//       vnp_OrderType: (req.query.orderType as string) || "defaultOrderType", // Loại đơn hàng
-//       vnp_ReturnUrl: returnUrl,
-//       vnp_TxnRef: (req.query.orderId as string) || "defaultOrderId",
-//     };
-
-//     // Sắp xếp và mã hóa
-//     const sortedParams = Object.keys(params)
-//       .sort()
-//       .reduce((obj, key) => {
-//         obj[key] = params[key];
-//         return obj;
-//       }, {} as Record<string, string>);
-
-//     const query = new URLSearchParams(sortedParams).toString();
-//     const hash = crypto
-//       .createHmac("sha512", secretKey)
-//       .update(query)
-//       .digest("hex");
-
-//     const paymentUrl = `${vnpUrl}?${query}&vnp_SecureHash=${hash}`;
-//     res.status(200).json({ paymentUrl });
-//   } catch (error) {
-//     console.error("Lỗi tạo thanh toán VNPay:", error);
-//     res.status(500).json({ message: "Lỗi tạo thanh toán VNPay", error });
-//   }
-// });
-
-
-// app.get("/payment/vnpay/return", (req: Request, res: Response) => {
-//   const { vnp_SecureHash, ...params } = req.query;
-
-//   const secretKey = "YOUR_VNP_HASHSECRET";
-
-//   // Ép kiểu các giá trị trong params
-//   const sortedParams = Object.keys(params)
-//     .sort()
-//     .reduce((obj, key) => {
-//       obj[key] = params[key] as string; 
-//       return obj;
-//     }, {} as Record<string, string>);
-
-//   const query = new URLSearchParams(sortedParams).toString();
-
-//   const checkHash = crypto.createHmac("sha512", secretKey).update(query).digest("hex");
-
-//   if (vnp_SecureHash === checkHash) {
-//     if (params["vnp_ResponseCode"] === "00") {
-//       res.status(200).json({ message: "Thanh toán thành công", params });
-//     } else {
-//       res.status(400).json({ message: "Thanh toán thất bại", params });
-//     }
-//   } else {
-//     res.status(400).json({ message: "Sai chữ ký bảo mật" });
-//   }
-// });
-
-
-
-
-
-
 
 app.post(
   "/upload",
@@ -153,6 +71,17 @@ app.post(
     }
   }
 );
+app.get("/users", async (req: Request, res: Response) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Error getting user information!",
+    });
+  }
+});
 app.get("/usersaccount", async (req: Request, res: Response) => {
   try {
     const users = await User.find();
@@ -206,7 +135,6 @@ app.put("/:id/cartupdate", async (req: Request, res: Response) => {
     cart.items[productIndex].quantity = newQuantity;
     await cart.save();
 
-    
     res.status(200).json(cart);
   } catch (error) {
     console.error("Error updating cart:", error);
@@ -282,7 +210,7 @@ app.delete("/cart/remove", async (req: Request, res: Response) => {
       );
 
       if (productIndex > -1) {
-        cart.items.splice(productIndex, 1); 
+        cart.items.splice(productIndex, 1);
         await cart.save();
         return res.status(200).json(cart);
       } else {
@@ -404,13 +332,16 @@ app.post("/register", async (req: Request, res: Response) => {
 
 app.post("/product/add", async (req: Request, res: Response) => {
   try {
-    const { name, price, img, soLuong, moTa, categoryID, status } = req.body;
-    console.log(categoryID);
+    const { name, price, img, soLuong, moTa, categoryID, materialID, status } =
+      req.body;
 
     const Category = await category.findById(categoryID);
-
+    const Material = await material.findById(materialID);
     if (!Category) {
       return res.status(404).json({ message: "Không tìm thấy danh mục" });
+    }
+    if (!Material) {
+      return res.status(404).json({ message: "Không tìm thấy chat lieu" });
     }
     const newProduct = new product({
       name,
@@ -419,9 +350,10 @@ app.post("/product/add", async (req: Request, res: Response) => {
       soLuong,
       moTa,
       category: categoryID,
+      material: materialID,
       status,
     });
-    await newProduct.save(); 
+    await newProduct.save();
     res.status(201).json({
       message: "Thêm sản phẩm thành công",
       product: newProduct,
@@ -435,7 +367,8 @@ app.post("/product/add", async (req: Request, res: Response) => {
 
 app.get("/product", async (req: Request, res: Response) => {
   try {
-    const products = await product.find().populate("category", "name");
+    const products = await product.find().populate("material", "name");
+
     res.json(products);
   } catch (error) {
     console.log(error);
@@ -445,13 +378,15 @@ app.get("/product", async (req: Request, res: Response) => {
 
 app.get("/product-test", async (req: Request, res: Response) => {
   try {
-    const { page = 1, limit = 10 } = req.query; // Default values for page and limit
+    const { page = 1, limit = 10 } = req.query;
 
-    // Fetch paginated products with category populated
     const options = {
       page: parseInt(page as string, 10),
       limit: parseInt(limit as string, 10),
-      populate: { path: "category", select: "name" },
+      populate: [
+        { path: "category", select: "name" },
+        { path: "material", select: "name" },
+      ],
     };
 
     const products = await product.paginate({}, options);
@@ -459,14 +394,19 @@ app.get("/product-test", async (req: Request, res: Response) => {
     res.json(products);
   } catch (error) {
     console.error("Error fetching products:", error);
-    res.status(500).json({ message: "Error retrieving product information" });
+    res.status(500).json({
+      message: "Error retrieving product information",
+    });
   }
 });
 
 app.get("/product/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const Product = await product.findById(id).populate("category", "name");
+    const Product = await product
+      .findById(id)
+      .populate("category", "name")
+      .populate("material", "name");
     res.json(Product);
   } catch (error) {
     console.log(error);
@@ -606,20 +546,35 @@ app.post("/addcategory", async (req: Request, res: Response) => {
 });
 
 //  Categoty : Delete
-// app.delete("/category/:id",async (req:Request,res:Response)=>{
-//   try{
-//     const {id} =req.params;
-//     const del = await category.findByIdAndDelete(id);
-//     res.json({
-//       message:"Danh mục đã xoá thành công",
-//       id: id,
-//       test: del,
-//     });
-//   }catch(error){
-//     console.log(error);
-//     res.status(500).json({ message: "Lỗi khi xóa danh mục" });
-//   }
-// })
+app.delete("/category/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const del = await category.findByIdAndDelete(id);
+    res.json({
+      message: "Danh mục đã xoá thành công",
+      id: id,
+      test: del,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Lỗi khi xóa danh mục" });
+  }
+});
+
+app.delete("/product/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const del = await product.findByIdAndDelete(id);
+    res.json({
+      message: "Sp đã xoá thành công",
+      id: id,
+      test: del,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Lỗi khi xóa SP" });
+  }
+});
 //
 // app.put('/categories/:id/deactivate', (req, res) => {
 //   const categoryId = req.params.id;
@@ -670,7 +625,7 @@ app.put("/user/activate/:id", async (req: Request, res: Response) => {
 // Thêm danh mục
 app.post("/addcategory", async (req: Request, res: Response) => {
   try {
-    const newCategory = new category({ ...req.body, status: "active" }); 
+    const newCategory = new category({ ...req.body, status: "active" });
     await newCategory.save();
     res.status(201).json({
       message: "Thêm Category thành công",
@@ -748,11 +703,10 @@ app.get("/deactive/:id", (req, res) => {
   res.send(`Deactivating item with ID ${itemId}`);
 });
 
-
-// Materal 
+// Materal
 app.post("/addmaterial", async (req: Request, res: Response) => {
   try {
-    const newMaterial = new material({ ...req.body, status: "active" }); 
+    const newMaterial = new material({ ...req.body, status: "active" });
     await newMaterial.save();
     res.status(201).json({
       message: "Thêm Material thành công",
@@ -816,7 +770,7 @@ app.put("/material/activate/:id", async (req: Request, res: Response) => {
 // Lấy vật liệu
 app.get("/material", async (req: Request, res: Response) => {
   try {
-    const materials = await material.find({ status: "active" }); // Chỉ lấy vật liệu hoạt động
+    const materials = await material.find();
     res.json(materials);
   } catch (error) {
     console.log(error);
@@ -837,49 +791,13 @@ app.put("/updatematerial/:id", async (req: Request, res: Response) => {
   }
 });
 
-
 app.get("/deactive/:id", (req, res) => {
   const itemId = req.params.id;
   // Gọi hàm để deactive item với id là itemId
   res.send(`Deactivating item with ID ${itemId}`);
 });
 
-app.post("/order/confirm", async (req: Request, res: Response) => {
-  const { userId, items, totalAmount, paymentMethod, customerDetails } =
-    req.body;
 
-  try {
-    if (
-      !userId ||
-      !items ||
-      !totalAmount ||
-      !paymentMethod ||
-      !customerDetails
-    ) {
-      return res.status(400).json({ message: "Missing order data" });
-    }
-
-    // Create a new order document
-    const order = new Order({
-      userId: userId,
-      items,
-      totalAmount,
-      paymentMethod,
-      status: "pending",
-      createdAt: new Date(),
-      customerDetails,
-    });
-
-    await order.save();
-    await Cart.findOneAndUpdate({ userId }, { items: [] });
-    res
-      .status(201)
-      .json({ message: "Order confirmed and cart reset", orderId: order._id });
-  } catch (error) {
-    console.error("Order confirmation error:", error);
-    res.status(500).json({ message: "Order confirmation failed", error });
-  }
-});
 
 // tìm kiếm và lọc sản phẩm theo tên sản phẩm và theo danh mục và theo giá
 // app.get('/products/search', async (rep, res) => {
@@ -929,7 +847,6 @@ app.put("/product/deactivate/:id", async (req: Request, res: Response) => {
   }
 });
 
-
 app.put("/product/activate/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -959,17 +876,424 @@ app.get("/orders", async (req: Request, res: Response) => {
   const { userId } = req.query; // Optional query parameter to filter by userId
 
   try {
-      // Find orders, optionally filter by userId if provided
-      const query = userId ? { userId } : {};
-      const orders = await Order.find(query).populate("userId", "name email").exec();
-      
-      res.status(200).json(orders);
+    // Find orders, optionally filter by userId if provided
+    const query = userId ? { userId } : {};
+    const orders = await Order.find(query)
+      .populate("userId", "name email")
+      .exec();
+
+    res.status(200).json(orders);
   } catch (error) {
-      console.error("Error fetching orders:", error);
-      res.status(500).json({ message: "Failed to retrieve orders", error });
+    console.error("Error fetching orders:", error);
+    res.status(500).json({ message: "Failed to retrieve orders", error });
   }
 });
 
+app.get("/posts", async (req: Request, res: Response) => {
+  try {
+    const query = await Tintuc.find();
+
+    if (query.length === 0) {
+      return res.status(404).json({
+        message: "Chưa có bài viết nào!",
+      });
+    }
+
+    return res.status(200).json(query);
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    return res
+      .status(500)
+      .json({ message: "Failed to retrieve orders", error });
+  }
+});
+app.get("/post/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const post = await Tintuc.findById(id);  // Thay 'product' bằng 'Tintuc'
+
+    if (!post) {
+      return res.status(404).json({ message: "Không tìm thấy bài viết" });
+    }
+
+    res.json(post);
+  } catch (error) {
+    console.error("Lỗi khi lấy bài viết:", error);
+    res.status(500).json({ message: "Lỗi khi lấy thông tin tin tức" });
+  }
+});
+
+app.post("/posts/create", async (req: Request, res: Response) => {
+  const { title, content, descriptions, img } = req.body;
+  try {
+    if (title.length === 0) {
+      return res.status(403).json({
+        message: "Tiêu đề bài viết không được để trống",
+      });
+    }
+
+    if (content.length === 0) {
+      return res.status(403).json({
+        message: "Nội dung bài viết không được để trống",
+      });
+    }
+
+    // Xử lí ảnh bài viết
+
+    // -------------------
+
+    const newTintuc = await Tintuc.create({
+      title,
+      content,
+      descriptions,
+      img,
+    });
+
+    if (!newTintuc) {
+      return res.status(403).json({
+        message: "Thêm bài viết không thành công!",
+      });
+    }
+
+    return res.status(200).json({
+      data: newTintuc,
+      message: "Thêm bài viết thành công!",
+    });
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    return res
+      .status(500)
+      .json({ message: "Failed to retrieve orders", error });
+  }
+});
+app.delete("/posts/:id", async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+      // Tìm và xóa bài viết theo ID
+      const deletedPost = await Tintuc.findByIdAndDelete(id);
+
+      if (!deletedPost) {
+          return res.status(404).json({ message: "Không tìm thấy bài viết" });
+      }
+
+      res.status(200).json({ message: "Xóa bài viết thành công", deletedPost });
+  } catch (error) {
+      console.error("Lỗi khi xóa bài viết:", error);
+      res.status(500).json({ message: "Lỗi máy chủ", error });
+  }
+});
+app.put("/updatePost/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Kiểm tra ID hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID không hợp lệ." });
+    }
+
+    // Tiến hành cập nhật
+    const updatedPost = await Tintuc.findByIdAndUpdate(
+      id,
+      req.body, // Dữ liệu cần cập nhật
+      { new: true, runValidators: true } // Tùy chọn trả về tài liệu mới và xác thực
+    );
+
+    // Kiểm tra nếu không tìm thấy bài viết
+    if (!updatedPost) {
+      return res.status(404).json({ message: "Không tìm thấy bài viết." });
+    }
+
+    res.status(200).json(updatedPost);
+  } catch (error) {
+    console.error("Lỗi khi cập nhật bài viết:", error);
+    res.status(500).json({ message: "Lỗi khi cập nhật bài viết." });
+  }
+});
+
+app.get("/orders-list", async (req: Request, res: Response) => {
+  try {
+    const orders = await Order.find()
+      .populate("userId", "name email")
+      .populate("items.productId", "name price img")
+      .exec();
+
+    if (orders.length === 0) {
+      return res.status(404).json({ message: "No orders found" });
+    }
+
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    res.status(500).json({ message: "Failed to retrieve orders", error });
+  }
+});
+
+app.get("/orders/:userId", async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  const { page = 1, limit = 10 } = req.query;
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid user ID format" });
+    }
+
+    const orders = await Order.find({ userId })
+      .populate("items.productId", "name price")
+      .sort({ createdAt: -1 })
+      .skip((+page - 1) * +limit)
+      .limit(+limit);
+
+    const totalOrders = await Order.countDocuments({ userId });
+
+    res.status(200).json({
+      orders,
+      totalOrders,
+      totalPages: Math.ceil(totalOrders / +limit),
+      currentPage: +page,
+    });
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    res.status(500).json({ message: "Failed to fetch orders", error });
+  }
+});
+
+app.put("/orders-list/:orderId", async (req, res) => {
+  const { orderId } = req.params;
+  const { status, paymentMethod } = req.body;
+
+  try {
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (status === "failed") {
+      const updatePromises = order.items.map((item) =>
+        Product.findByIdAndUpdate(
+          item.productId,
+          { $inc: { quantity: item.quantity } },
+          { new: true }
+        )
+      );
+
+      await Promise.all(updatePromises);
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      { status, paymentMethod },
+      { new: true }
+    );
+
+    if (updatedOrder) {
+      res.status(200).json(updatedOrder);
+    } else {
+      res.status(404).json({ message: "Order not found after update" });
+    }
+  } catch (error) {
+    console.error("Error updating order:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/api/admin/stats", async (req, res) => {
+  try {
+  
+    const totalProducts = await Product.countDocuments();
+
+  
+    const totalOrders = await Order.countDocuments();
+
+    
+    const deliveredOrders = await Order.countDocuments({ status: "delivered" });
+
+   
+    const canceledOrders = await Order.countDocuments({ status: "failed" });
+
+    
+    const statistics = {
+      totalProducts,
+      totalOrders,
+      deliveredOrders,
+      canceledOrders,
+    };
+
+    res.json(statistics);
+  } catch (err) {
+    console.error("Error fetching statistics:", err);
+    res
+      .status(500)
+      .json({ message: "Failed to fetch statistics. Please try again later." });
+  }
+});
+
+
+//vnpay
+
+app.post("/create-payment", async (req: Request, res: Response) => {
+
+  const { userId, amount,paymentMethod, bankCode, customerDetails, Items } = req.body;
+  console.log("Payload received:", req.body);
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    console.log("Invalid orderId format");
+    return res.status(400).json({ message: "Invalid orderId format" });
+  }
+
+  try {
+
+    
+
+    // const order = await Order.create({
+    //   userId: req.body.userId,  
+    //   items: req.body.items,
+    //   amount: Number(req.body.amount) / 100,  
+    //   customerDetails: req.body.customerDetails,
+    //   paymentMethod: req.body.paymentMethod,
+    // });
+    // console.log(order, "order");
+    
+    
+
+    const paymentUrl = createVNPayPaymentUrl({Id: userId, customerDetails: customerDetails, items: Items ,amount: amount, bankCode, req});
+    console.log("Payment URL generated:", paymentUrl);
+
+    return res.status(200).json({ paymentUrl });
+  } catch (error) {
+    console.error("Error:", error);
+    return res.status(500).json({ message: "Có lỗi xảy ra, vui lòng thử lại" });
+  }
+});
+
+const vnp_TmnCode = process.env.VNP_TMNCODE || "6KV33Z7O"; 
+const vnp_HashSecret =
+  process.env.VNP_HASHSECRET || "HID072I1H7DJ6HO5O92JMV2WX2HMDQRD"; 
+let vnp_Url: any =
+  process.env.VNP_URL || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"; 
+const vnp_ReturnUrl =
+  process.env.VNP_RETURNURL || "http://localhost:3000/success"; 
+
+app.get("/vnpay_return", function (req, res, next) {
+  let vnp_Params = req.query;
+
+  let secureHash = vnp_Params["vnp_SecureHash"];
+
+  delete vnp_Params["vnp_SecureHash"];
+  delete vnp_Params["vnp_SecureHashType"];
+
+  vnp_Params = sortObject(vnp_Params);
+
+  let config = require("config");
+  let tmnCode = vnp_TmnCode;
+  let secretKey = vnp_TmnCode;
+
+  let querystring = require("qs");
+  let signData = querystring.stringify(vnp_Params, { encode: false });
+  let crypto = require("crypto");
+  let hmac = crypto.createHmac("sha512", secretKey);
+  let signed = hmac.update(new Buffer(signData, "utf-8")).digest("hex");
+  console.log("tsest vpay", vnp_Params["vnp_ResponseCode"]);
+
+  if (secureHash === signed) {
+   
+
+    res.render("success", { code: vnp_Params["vnp_ResponseCode"] });
+  } else {
+    res.render("success", { code: "97" });
+  }
+});
+
+app.post("/order/confirm", async (req: Request, res: Response) => { // tien mat
+    const { userId, items, amount, paymentMethod, customerDetails } =
+      req.body;
+  
+    try {
+      if (
+        !userId ||
+        !items ||
+        !amount ||
+        !paymentMethod ||
+        !customerDetails
+      ) {
+        return res.status(400).json({ message: "Missing order data" });
+      }
+  
+      // Create a new order document
+      const order = new Order({
+        userId: userId,
+        items,
+        amount,
+        paymentMethod,
+        status: "pending",
+        createdAt: new Date(),
+        customerDetails,
+      });
+  
+      await order.save();
+      await Cart.findOneAndUpdate({ userId }, { items: [] });
+      res.status(201).json({
+        message: "Order confirmed and cart reset",
+        orderId: order._id,
+      });
+    } catch (error) {
+      console.error("Order confirmation error:", error);
+      res.status(500).json({ message: "Order confirmation failed", error });
+    }
+  });
+
+  app.post("/order/confirmvnpay", async (req: Request, res: Response) => {
+    try {
+      const {
+        userId,
+        vnp_Amount,
+        vnp_OrderInfo,
+        vnp_ResponseCode,
+        vnp_TransactionNo,
+        paymentMethod,
+      } = req.body;
+  
+      if (!userId || !vnp_Amount || !vnp_ResponseCode || !vnp_TransactionNo || !paymentMethod) {
+        return res.status(400).json({ message: "thiếu thông tin" });
+      }
+  
+      if (vnp_ResponseCode !== "00") {
+        return res.status(400).json({ message: "thanh toán thất bại" });
+      }
+  
+  
+      
+      const cartUpdate = await Cart.findOneAndUpdate({ userId }, { items: [] });
+      if (!cartUpdate) {
+        return res.status(404).json({ message: "không tìm thấy giỏ hàng" });
+      }
+  
+      
+      const updatedOrder = await Order.findOneAndUpdate(
+        { userId, status: "pending" },
+        { paymentstatus: "Đã Thanh toán", magiaodich: vnp_TransactionNo },
+        { new: true, sort: { createdAt: -1 } }
+      );
+  
+      if (!updatedOrder) {
+        return res.status(404).json({ message: "Đơn hàng ko tồn tại." });
+      }
+  
+      return res.status(201).json({ message: "Đơn hàng đặt thành công.", order: updatedOrder });
+    } catch (error) {
+      console.error("Error updating order:", error);
+      return res.status(500).json({ message: "Failed to update the order.", error });
+    }
+  });
+  
+  
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
 });
+
+// Ngân hàng	NCB
+// Số thẻ	9704198526191432198
+// Tên chủ thẻ	NGUYEN VAN A
+// Ngày phát hành	07/15
+// Mật khẩu OTP	123456
