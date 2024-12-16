@@ -391,7 +391,6 @@ app.get("/product-test", async (req: Request, res: Response) => {
       ],
     };
 
-    // Kiểm tra query parameter 'admin'
     const filter = admin === "true" ? { status: true } : {};
 
     const products = await product.paginate(filter, options);
