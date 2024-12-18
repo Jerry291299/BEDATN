@@ -13,6 +13,7 @@ import product from "./product";
 import Order from "./order";
 import material from "./material";
 import Tintuc from "./posts";
+import Comment from "./comment";
 
 import crypto from "crypto";
 import { createVNPayPaymentUrl, sortObject } from "./service/VNPay";
@@ -1325,6 +1326,28 @@ app.post("/api/orders/:orderId/cancel", async (req, res) => {
       .json({ message: "Error cancelling order"});
   }
 });
+
+// POST để thêm mới bình luận
+app.post('/comments', async (req, res) => {
+  try {
+      const newComment = new Comment(req.body);
+      await newComment.save();
+      res.status(201).json(newComment);
+  } catch (error) {
+      res.status(400).json({message: "Lỗi Bạn không thể bình luận !!!" });
+  }
+});
+
+// GET để truy xuất nhận xét cho một sản phẩm cụ thể
+app.get('/comments/:productId', async (req, res) => {
+  try {
+      const comments = await Comment.find({ productId: req.params.productId });
+      res.status(200).json(comments);
+  } catch (error) {
+      res.status(500).json({message: "Lỗi Bạn không thể truy xuất bình luận !!!" });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
