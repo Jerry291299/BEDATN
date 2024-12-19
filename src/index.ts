@@ -1347,7 +1347,44 @@ app.get('/comments/:productId', async (req, res) => {
       res.status(500).json({message: "Lỗi Bạn không thể truy xuất bình luận !!!" });
   }
 });
+app.get("/api/products/:productId", async (req: Request, res: Response) => {
+  try {
+    const { productId } = req.params;
 
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.json(product);
+  } catch (error) {
+    console.error("Error fetching product details:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+app.put("/api/cart/:userId", async (req, res) => {
+  try {
+    const { productId, quantity } = req.body;
+    const cart = await Cart.findOne({ userId: req.params.userId });
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
+
+    const item = cart.items.find((item) => item.productId.toString() === productId);
+    if (!item) {
+      return res.status(404).json({ message: "Product not found in cart" });
+    }
+
+    item.quantity = quantity;
+    await cart.save();
+    res.status(200).json({ message: "Cart updated successfully" });
+  } catch (error) {
+    console.error("Error updating cart:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
