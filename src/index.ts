@@ -911,6 +911,43 @@ app.get("/orders", async (req: Request, res: Response) => {
     res.status(500).json({ message: "Failed to retrieve orders", error });
   }
 });
+router.post("/api/orders", async (req: Request, res: Response) => {
+  const { userId, items, paymentMethod, amount, customerDetails } = req.body;
+
+  try {
+    // Kiểm tra và cập nhật số lượng sản phẩm trong kho
+    for (const item of items) {
+      const product = await Product.findById(item.productId);
+      if (!product || product.soLuong < item.quantity) {
+        return res.status(400).json({
+          message: `Không đủ số lượng sản phẩm ${item.name} trong kho.`,
+        });
+      }
+
+      // Giảm số lượng sản phẩm
+      product.soLuong -= item.quantity;
+      await product.save();
+    }
+
+    // Tạo đơn hàng
+    const newOrder = new Order({
+      userId,
+      items,
+      paymentMethod,
+      amount,
+      customerDetails,
+    });
+
+    await newOrder.save();
+
+    res
+      .status(201)
+      .json({ message: "Order placed successfully", order: newOrder });
+  } catch (error) {
+    console.error("Error placing order:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 app.get("/posts", async (req: Request, res: Response) => {
   try {
@@ -1316,35 +1353,35 @@ app.post("/api/orders/:orderId/cancel", async (req, res) => {
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
-    order.status = "cancelled"; 
+    order.status = "cancelled";
     await order.save();
 
-    res.json(order); 
+    res.json(order);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error cancelling order"});
+    res.status(500).json({ message: "Error cancelling order" });
   }
 });
 
 // POST để thêm mới bình luận
-app.post('/comments', async (req, res) => {
+app.post("/comments", async (req, res) => {
   try {
-      const newComment = new Comment(req.body);
-      await newComment.save();
-      res.status(201).json(newComment);
+    const newComment = new Comment(req.body);
+    await newComment.save();
+    res.status(201).json(newComment);
   } catch (error) {
-      res.status(400).json({message: "Lỗi Bạn không thể bình luận !!!" });
+    res.status(400).json({ message: "Lỗi Bạn không thể bình luận !!!" });
   }
 });
 
 // GET để truy xuất nhận xét cho một sản phẩm cụ thể
-app.get('/comments/:productId', async (req, res) => {
+app.get("/comments/:productId", async (req, res) => {
   try {
-      const comments = await Comment.find({ productId: req.params.productId });
-      res.status(200).json(comments);
+    const comments = await Comment.find({ productId: req.params.productId });
+    res.status(200).json(comments);
   } catch (error) {
-      res.status(500).json({message: "Lỗi Bạn không thể truy xuất bình luận !!!" });
+    res
+      .status(500)
+      .json({ message: "Lỗi Bạn không thể truy xuất bình luận !!!" });
   }
 });
 app.get("/api/products/:productId", async (req: Request, res: Response) => {
@@ -1363,7 +1400,6 @@ app.get("/api/products/:productId", async (req: Request, res: Response) => {
   }
 });
 
-
 app.put("/api/cart/:userId", async (req, res) => {
   try {
     const { productId, quantity } = req.body;
@@ -1372,7 +1408,9 @@ app.put("/api/cart/:userId", async (req, res) => {
       return res.status(404).json({ message: "Cart not found" });
     }
 
-    const item = cart.items.find((item) => item.productId.toString() === productId);
+    const item = cart.items.find(
+      (item) => item.productId.toString() === productId
+    );
     if (!item) {
       return res.status(404).json({ message: "Product not found in cart" });
     }
@@ -1385,6 +1423,51 @@ app.put("/api/cart/:userId", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+app.get("/api/products-pay/:productId", async (req: Request, res: Response) => {
+  const { productId } = req.params;
+
+  try {
+    const product = await Product.findById(productId); // Lấy sản phẩm theo ID
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.json(product);
+  } catch (error) {
+    console.error("Error fetching product:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+app.put("/api/products/:productId", async (req: Request, res: Response) => {
+  const { productId } = req.params;
+  const { quantity } = req.body; // Quantity là số lượng sản phẩm trong đơn hàng
+
+  try {
+    // Lấy thông tin sản phẩm từ cơ sở dữ liệu
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Kiểm tra số lượng còn lại trong kho (soLuong)
+    if (product.soLuong < quantity) {
+      return res.status(400).json({ message: "Not enough stock" });
+    }
+
+    // Cập nhật số lượng sản phẩm trong kho (trừ đi quantity từ soLuong)
+    product.soLuong -= quantity; // Trừ số lượng theo đơn hàng
+    if (product.soLuong < 0) product.soLuong = 0; // Đảm bảo số lượng không âm
+    await product.save(); // Lưu thay đổi vào cơ sở dữ liệu
+
+    res.status(200).json({ message: "Product quantity updated successfully" });
+  } catch (error) {
+    console.error("Error updating product:", error);
+    res.status(500).json({ message: "Error updating product quantity" });
+  }
+});
+
+
+
 
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
