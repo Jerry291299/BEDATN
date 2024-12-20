@@ -1346,19 +1346,37 @@ app.post("/order/confirmvnpay", async (req: Request, res: Response) => {
       .json({ message: "Failed to update the order.", error });
   }
 });
+
 app.post("/api/orders/:orderId/cancel", async (req, res) => {
   const { orderId } = req.params;
+
   try {
     const order = await Order.findById(orderId);
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: "Order not found." });
     }
+
+    if (order.status === "cancelled") {
+      return res.status(400).json({ message: "Order is already cancelled." });
+    }
+
     order.status = "cancelled";
+
+    const updatePromises = order.items.map((item) => {
+      return Product.findByIdAndUpdate(
+        item.productId,
+        { $inc: { soLuong: item.quantity } },
+        { new: true }
+      );
+    });
+
+    await Promise.all(updatePromises);
     await order.save();
 
-    res.json(order);
+    res.json({ message: "Order cancelled successfully", order });
   } catch (error) {
-    res.status(500).json({ message: "Error cancelling order" });
+    console.error("Error cancelling order:", error);
+    res.status(500).json({ message: "Failed to cancel order." });
   }
 });
 
@@ -1465,9 +1483,6 @@ app.put("/api/products/:productId", async (req: Request, res: Response) => {
     res.status(500).json({ message: "Error updating product quantity" });
   }
 });
-
-
-
 
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
