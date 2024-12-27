@@ -589,16 +589,20 @@ app.delete("/product/:id", async (req: Request, res: Response) => {
 app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { reason } = req.body; // Lấy lý do từ request
 
-    // Kiểm tra ID hợp lệ
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "ID không hợp lệ" });
+    if (!reason) {
+      return res.status(400).json({ message: "Lý do vô hiệu hóa là bắt buộc" });
     }
 
-    const user = await User.findByIdAndUpdate(id, { active: false }, { new: true });
+    const user = await User.findByIdAndUpdate(
+      id,
+      { active: false, reason },
+      { new: true }
+    );
 
     if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng để vô hiệu hóa" });
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
 
     res.json({ message: "Người dùng đã được vô hiệu hóa", user });
@@ -608,6 +612,8 @@ app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
   }
 });
 
+
+
 // Kích hoạt lại người dùng
 app.put("/user/activate/:id", async (req: Request, res: Response) => {
   try {
@@ -615,21 +621,26 @@ app.put("/user/activate/:id", async (req: Request, res: Response) => {
 
     // Kiểm tra ID hợp lệ
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "ID không hợp lệ" });
+      return res.status(400).json({ message: "ID không hợp lệ." });
     }
 
-    const user = await User.findByIdAndUpdate(id, { active: true }, { new: true });
+    const user = await User.findByIdAndUpdate(
+      id,
+      { active: true, reason: null }, // Xóa lý do khi kích hoạt
+      { new: true }
+    );
 
     if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng để kích hoạt lại" });
+      return res.status(404).json({ message: "Không tìm thấy người dùng để kích hoạt lại." });
     }
 
     res.json({ message: "Người dùng đã được kích hoạt lại", user });
   } catch (error) {
     console.error("Error activating user:", error);
-    res.status(500).json({ message: "Lỗi khi kích hoạt lại người dùng" });
+    res.status(500).json({ message: "Lỗi khi kích hoạt lại người dùng." });
   }
 });
+
 
 // Thêm danh mục
 app.post("/addcategory", async (req: Request, res: Response) => {

@@ -7,6 +7,7 @@ export interface User extends Document {
   password: string;
   role: string;
   active: boolean;
+  reason:String;
 }
 
 const UserSchema: Schema = new Schema(
@@ -20,6 +21,7 @@ const UserSchema: Schema = new Schema(
       default: "user",
     },
     active: { type: Boolean, default: true },
+    reason: { type: String, default: null },
   },
   { timestamps: true } // Thêm timestamps
 );
