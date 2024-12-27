@@ -589,16 +589,18 @@ app.delete("/product/:id", async (req: Request, res: Response) => {
 app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const user = await User.findByIdAndUpdate(
-      id,
-      { active: false },
-      { new: true }
-    );
-    if (!user) {
-      return res
-        .status(404)
-        .json({ message: "Không tìm thấy người dùng để vô hiệu hóa" });
+
+    // Kiểm tra ID hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID không hợp lệ" });
     }
+
+    const user = await User.findByIdAndUpdate(id, { active: false }, { new: true });
+
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng để vô hiệu hóa" });
+    }
+
     res.json({ message: "Người dùng đã được vô hiệu hóa", user });
   } catch (error) {
     console.error("Error deactivating user:", error);
@@ -610,16 +612,18 @@ app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
 app.put("/user/activate/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const user = await User.findByIdAndUpdate(
-      id,
-      { active: true },
-      { new: true }
-    );
-    if (!user) {
-      return res.status(404).json({
-        message: "Không tìm thấy người dùng để kích hoạt lại",
-      });
+
+    // Kiểm tra ID hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID không hợp lệ" });
     }
+
+    const user = await User.findByIdAndUpdate(id, { active: true }, { new: true });
+
+    if (!user) {
+      return res.status(404).json({ message: "Không tìm thấy người dùng để kích hoạt lại" });
+    }
+
     res.json({ message: "Người dùng đã được kích hoạt lại", user });
   } catch (error) {
     console.error("Error activating user:", error);
