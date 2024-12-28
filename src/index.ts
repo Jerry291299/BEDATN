@@ -333,29 +333,39 @@ app.post("/register", async (req: Request, res: Response) => {
   }
 });
 
+// Thêm sản phẩm
 app.post("/product/add", async (req: Request, res: Response) => {
   try {
-    const { name, price, img, soLuong, moTa, categoryID, materialID, status } =
-      req.body;
+    const {
+      name,
+      img,
+      moTa,
+      categoryID,
+      materialID,
+      status,
+      variants,
+    } = req.body;
 
     const Category = await category.findById(categoryID);
     const Material = await material.findById(materialID);
+
     if (!Category) {
       return res.status(404).json({ message: "Không tìm thấy danh mục" });
     }
     if (!Material) {
-      return res.status(404).json({ message: "Không tìm thấy chat lieu" });
+      return res.status(404).json({ message: "Không tìm thấy chất liệu" });
     }
-    const newProduct = new product({
+
+    const newProduct = new Product({
       name,
-      price,
       img,
-      soLuong,
       moTa,
       category: categoryID,
       material: materialID,
       status,
+      variants,
     });
+
     await newProduct.save();
     res.status(201).json({
       message: "Thêm sản phẩm thành công",
@@ -363,19 +373,19 @@ app.post("/product/add", async (req: Request, res: Response) => {
       status: 200,
     });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res.status(500).json({ message: "Lỗi thêm mới" });
   }
 });
 
-app.get("/product", async (req: Request, res: Response) => {
+// Lấy tất cả sản phẩm
+app.get("/products", async (req: Request, res: Response) => {
   try {
-    const products = await product.find().populate("material", "name");
-
-    res.json(products);
+    const products = await Product.find().populate('category material');
+    res.status(200).json(products);
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Lỗi khi lấy thông tin sản phẩm" });
+    console.error(error);
+    res.status(500).json({ message: "Lỗi lấy danh sách sản phẩm" });
   }
 });
 
@@ -404,31 +414,47 @@ app.get("/product-test", async (req: Request, res: Response) => {
     });
   }
 });
-
+// Lấy một sản phẩm theo ID
 app.get("/product/:id", async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const Product = await product
-      .findById(id)
-      .populate("category", "name")
-      .populate("material", "name");
-    res.json(Product);
+    const product = await Product.findById(req.params.id).populate('category material');
+    if (!product) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+    }
+    res.status(200).json(product);
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Lỗi khi lấy thông tin sản phẩm" });
+    console.error(error);
+    res.status(500).json({ message: "Lỗi lấy sản phẩm" });
   }
 });
 
-app.put("/update/:id", async (req: Request, res: Response) => {
+// Update a product by ID
+app.put("/product/:id", async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const updateProduct = await product.findByIdAndUpdate(id, req.body, {
-      new: true,
-    });
-    res.json(updateProduct);
+    const {
+      name,
+      img,
+      moTa,
+      categoryID,
+      materialID,
+      status,
+      variants,
+    } = req.body;
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      { name, img, moTa, category: categoryID, material: materialID, status, variants },
+      { new: true }
+    );
+
+    if (!updatedProduct) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+    }
+
+    res.status(200).json({ message: "Cập nhật sản phẩm thành công", product: updatedProduct });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Lỗi khi cập nhật sản phẩm" });
+    console.error(error);
+    res.status(500).json({ message: "Lỗi cập nhật sản phẩm" });
   }
 });
 
@@ -589,16 +615,22 @@ app.delete("/product/:id", async (req: Request, res: Response) => {
 app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { reason } = req.body; // Lấy lý do từ request
+
+    if (!reason) {
+      return res.status(400).json({ message: "Lý do vô hiệu hóa là bắt buộc" });
+    }
+
     const user = await User.findByIdAndUpdate(
       id,
-      { active: false },
+      { active: false, reason },
       { new: true }
     );
+
     if (!user) {
-      return res
-        .status(404)
-        .json({ message: "Không tìm thấy người dùng để vô hiệu hóa" });
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
+
     res.json({ message: "Người dùng đã được vô hiệu hóa", user });
   } catch (error) {
     console.error("Error deactivating user:", error);
@@ -606,26 +638,35 @@ app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
   }
 });
 
+
+
 // Kích hoạt lại người dùng
 app.put("/user/activate/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+
+    // Kiểm tra ID hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "ID không hợp lệ." });
+    }
+
     const user = await User.findByIdAndUpdate(
       id,
-      { active: true },
+      { active: true, reason: null }, // Xóa lý do khi kích hoạt
       { new: true }
     );
+
     if (!user) {
-      return res.status(404).json({
-        message: "Không tìm thấy người dùng để kích hoạt lại",
-      });
+      return res.status(404).json({ message: "Không tìm thấy người dùng để kích hoạt lại." });
     }
+
     res.json({ message: "Người dùng đã được kích hoạt lại", user });
   } catch (error) {
     console.error("Error activating user:", error);
-    res.status(500).json({ message: "Lỗi khi kích hoạt lại người dùng" });
+    res.status(500).json({ message: "Lỗi khi kích hoạt lại người dùng." });
   }
 });
+
 
 // Thêm danh mục
 app.post("/addcategory", async (req: Request, res: Response) => {
@@ -918,14 +959,25 @@ router.post("/api/orders", async (req: Request, res: Response) => {
     // Kiểm tra và cập nhật số lượng sản phẩm trong kho
     for (const item of items) {
       const product = await Product.findById(item.productId);
-      if (!product || product.soLuong < item.quantity) {
-        return res.status(400).json({
-          message: `Không đủ số lượng sản phẩm ${item.name} trong kho.`,
+      if (!product) {
+        return res.status(404).json({
+          message: `Sản phẩm không tồn tại.`,
         });
       }
 
-      // Giảm số lượng sản phẩm
-      product.soLuong -= item.quantity;
+      // Tìm kiếm biến thể tương ứng trong mảng variants
+      const variant = product.variants.find(v => v.size === item.size);
+
+      if (!variant || variant.quantity < item.quantity) {
+        return res.status(400).json({
+          message: `Không đủ số lượng sản phẩm ${item.name} (${item.size}) trong kho.`,
+        });
+      }
+
+      // Giảm số lượng biến thể
+      variant.quantity -= item.quantity;
+
+      // Lưu lại sản phẩm
       await product.save();
     }
 
@@ -940,12 +992,10 @@ router.post("/api/orders", async (req: Request, res: Response) => {
 
     await newOrder.save();
 
-    res
-      .status(201)
-      .json({ message: "Order placed successfully", order: newOrder });
+    res.status(201).json({ message: "Đặt hàng thành công", order: newOrder });
   } catch (error) {
     console.error("Error placing order:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Lỗi máy chủ" });
   }
 });
 
@@ -1370,6 +1420,7 @@ app.post("/order/confirmvnpay", async (req: Request, res: Response) => {
 
 app.post("/api/orders/:orderId/cancel", async (req, res) => {
   const { orderId } = req.params;
+  const { reason, canceledBy } = req.body; // Lấy lý do hủy và người thực hiện từ body
 
   try {
     const order = await Order.findById(orderId);
@@ -1381,8 +1432,15 @@ app.post("/api/orders/:orderId/cancel", async (req, res) => {
       return res.status(400).json({ message: "Order is already cancelled." });
     }
 
+    // Cập nhật trạng thái hủy đơn và thông tin chi tiết hủy
     order.status = "cancelled";
+    order.cancelReason = {
+      reason: reason || "No reason provided", // Lý do hủy
+      canceledAt: new Date(), // Thời điểm hủy
+      canceledBy: canceledBy || "Unknown", // Người thực hiện hủy
+    };
 
+    // Cập nhật số lượng sản phẩm trong kho
     const updatePromises = order.items.map((item) => {
       return Product.findByIdAndUpdate(
         item.productId,
@@ -1400,6 +1458,7 @@ app.post("/api/orders/:orderId/cancel", async (req, res) => {
     res.status(500).json({ message: "Failed to cancel order." });
   }
 });
+
 
 // POST để thêm mới bình luận
 app.post("/comments", async (req, res) => {
@@ -1479,26 +1538,31 @@ app.get("/api/products-pay/:productId", async (req: Request, res: Response) => {
 });
 app.put("/api/products/:productId", async (req: Request, res: Response) => {
   const { productId } = req.params;
-  const { quantity } = req.body; // Quantity là số lượng sản phẩm trong đơn hàng
+  const { quantity, size } = req.body; // Include size in the request body
 
   try {
-    // Lấy thông tin sản phẩm từ cơ sở dữ liệu
+    // Retrieve product information from the database
     const product = await Product.findById(productId);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    // Kiểm tra số lượng còn lại trong kho (soLuong)
-    if (product.soLuong < quantity) {
-      return res.status(400).json({ message: "Not enough stock" });
+    // Find the corresponding variant in the variants array
+    const variant = product.variants.find(v => v.size === size);
+    if (!variant) {
+      return res.status(404).json({ message: "Variant not found" });
     }
 
-    // Cập nhật số lượng sản phẩm trong kho (trừ đi quantity từ soLuong)
-    product.soLuong -= quantity; // Trừ số lượng theo đơn hàng
-    if (product.soLuong < 0) product.soLuong = 0; // Đảm bảo số lượng không âm
-    await product.save(); // Lưu thay đổi vào cơ sở dữ liệu
+    // Check available stock for the selected variant
+    if (variant.quantity < quantity) {
+      return res.status(400).json({ message: "Not enough stock for the selected variant" });
+    }
 
-    res.status(200).json({ message: "Product quantity updated successfully" });
+    // Update the variant quantity in stock
+    variant.quantity -= quantity; // Deduct the ordered quantity
+    await product.save(); // Save changes to the database
+
+    res.status(200).json({ message: "Variant quantity updated successfully", variant });
   } catch (error) {
     console.error("Error updating product:", error);
     res.status(500).json({ message: "Error updating product quantity" });

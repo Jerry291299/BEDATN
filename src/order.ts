@@ -17,6 +17,11 @@ export interface IOrder extends Document {
     address: string;
     notes?: string;
   };
+  cancelReason: {
+    reason: String , // Lý do hủy đơn
+    canceledAt:  Date , // Thời điểm hủy
+    canceledBy: String , // Người thực hiện hủy
+  },
   paymentMethod: string; 
 }
 
@@ -34,9 +39,10 @@ const orderSchema = new Schema<IOrder>({
   ],
   amount: { type: Number, required: true },
   status: { type: String, default: "pending" },
-  paymentstatus: { type: String, 
-    // enum: ["chưa thanh toán", "Đã thanh toán","failed"], 
-    default: "chưa thanh toán"  },
+  paymentstatus: { 
+    type: String, 
+    default: "chưa thanh toán" 
+  },
   createdAt: { type: Date, default: Date.now },
   magiaodich: { type: String, required: false },
   customerDetails: {
@@ -47,8 +53,12 @@ const orderSchema = new Schema<IOrder>({
     notes: { type: String },
   },
   paymentMethod: { type: String, required: true },
+  cancelReason: {
+    reason: { type: String }, // Lý do hủy đơn
+    canceledAt: { type: Date }, // Thời điểm hủy
+    canceledBy: { type: String }, // Người thực hiện hủy
+  },
 });
-
 
 const Order = mongoose.model<IOrder>("Order", orderSchema);
 

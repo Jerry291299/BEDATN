@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document } from "mongoose";
-import mongoosePaginate from "mongoose-paginate-v2";
 
 export interface Comment extends Document {
     id?: number;        // ID của bình luận (tùy chọn, nếu cần thiết)
@@ -23,7 +22,6 @@ const CommentSchema: Schema = new Schema({
     
 });
 
-CommentSchema.plugin(mongoosePaginate);
 
 const CommentModel = mongoose.model<Comment>("Comment", CommentSchema);
 
