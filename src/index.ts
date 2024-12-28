@@ -1399,6 +1399,7 @@ app.post("/order/confirmvnpay", async (req: Request, res: Response) => {
 
 app.post("/api/orders/:orderId/cancel", async (req, res) => {
   const { orderId } = req.params;
+  const { reason, canceledBy } = req.body; // Lấy lý do hủy và người thực hiện từ body
 
   try {
     const order = await Order.findById(orderId);
@@ -1410,8 +1411,15 @@ app.post("/api/orders/:orderId/cancel", async (req, res) => {
       return res.status(400).json({ message: "Order is already cancelled." });
     }
 
+    // Cập nhật trạng thái hủy đơn và thông tin chi tiết hủy
     order.status = "cancelled";
+    order.cancelReason = {
+      reason: reason || "No reason provided", // Lý do hủy
+      canceledAt: new Date(), // Thời điểm hủy
+      canceledBy: canceledBy || "Unknown", // Người thực hiện hủy
+    };
 
+    // Cập nhật số lượng sản phẩm trong kho
     const updatePromises = order.items.map((item) => {
       return Product.findByIdAndUpdate(
         item.productId,
@@ -1429,6 +1437,7 @@ app.post("/api/orders/:orderId/cancel", async (req, res) => {
     res.status(500).json({ message: "Failed to cancel order." });
   }
 });
+
 
 // POST để thêm mới bình luận
 app.post("/comments", async (req, res) => {
