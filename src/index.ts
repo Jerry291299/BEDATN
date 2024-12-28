@@ -1210,7 +1210,28 @@ app.put("/orders-list/:orderId", async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
+app.get("/orders/:orderId", async (req: Request, res: Response) => {
+  const { orderId } = req.params;
 
+  try {
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ message: "Invalid order ID format" });
+    }
+
+    const order = await Order.findById(orderId)
+      .populate("items.productId", "name price img")
+      .exec();
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    res.status(200).json(order);
+  } catch (error) {
+    console.error("Error fetching order detail:", error);
+    res.status(500).json({ message: "Failed to fetch order detail", error });
+  }
+});
 app.get("/api/admin/stats", async (req, res) => {
   try {
     const totalProducts = await Product.countDocuments();
