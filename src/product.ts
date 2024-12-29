@@ -12,7 +12,8 @@ export interface Variant {
 
 // Giao diện cho sản phẩm
 export interface Product extends Document {
-    _id: number;                             // ID sản phẩm
+    _id: number;
+    masp: string;                           // ID sản phẩm
     name: string;                            // Tên sản phẩm
     img: string[];                           // Mảng URL ảnh sản phẩm
     moTa: string;                            // Mô tả sản phẩm
@@ -24,6 +25,7 @@ export interface Product extends Document {
 
 // Định nghĩa schema cho sản phẩm
 const ProductSchema: Schema = new Schema({
+    masp: { type: String, required: true },
     name: { type: String, required: true },                // Tên sản phẩm
     img: [{ type: String }],                               // Mảng ảnh sản phẩm
     moTa: { type: String, required: true },                // Mô tả sản phẩm

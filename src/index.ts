@@ -337,6 +337,7 @@ app.post("/register", async (req: Request, res: Response) => {
 app.post("/product/add", async (req: Request, res: Response) => {
   try {
     const {
+      masp,
       name,
       img,
       moTa,
@@ -357,6 +358,7 @@ app.post("/product/add", async (req: Request, res: Response) => {
     }
 
     const newProduct = new Product({
+      masp,
       name,
       img,
       moTa,
