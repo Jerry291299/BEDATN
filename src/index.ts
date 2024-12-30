@@ -337,6 +337,7 @@ app.post("/register", async (req: Request, res: Response) => {
 app.post("/product/add", async (req: Request, res: Response) => {
   try {
     const {
+      masp,
       name,
       img,
       moTa,
@@ -357,6 +358,7 @@ app.post("/product/add", async (req: Request, res: Response) => {
     }
 
     const newProduct = new Product({
+      masp,
       name,
       img,
       moTa,
@@ -432,6 +434,7 @@ app.get("/product/:id", async (req: Request, res: Response) => {
 app.put("/product/:id", async (req: Request, res: Response) => {
   try {
     const {
+      masp,
       name,
       img,
       moTa,
@@ -443,7 +446,7 @@ app.put("/product/:id", async (req: Request, res: Response) => {
 
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
-      { name, img, moTa, category: categoryID, material: materialID, status, variants },
+      { masp, name, img, moTa, category: categoryID, material: materialID, status, variants },
       { new: true }
     );
 
