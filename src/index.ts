@@ -336,19 +336,22 @@ app.post("/register", async (req: Request, res: Response) => {
 // Thêm sản phẩm
 app.post("/product/add", async (req: Request, res: Response) => {
   try {
-    const {
-      masp,
-      name,
-      img,
-      moTa,
-      categoryID,
-      materialID,
-      status,
-      variants,
-    } = req.body;
+    const { masp, name, img, moTa, categoryID, materialID, status, variants } =
+      req.body;
+
+    // Kiểm tra xem có sản phẩm nào có cùng masp hoặc name không
+    const existingProductByMasp = await Product.findOne({ masp });
+    const existingProductByName = await Product.findOne({ name });
 
     const Category = await category.findById(categoryID);
     const Material = await material.findById(materialID);
+    if (existingProductByMasp) {
+      return res.status(400).json({ message: "Mã sản phẩm đã tồn tại" });
+    }
+
+    if (existingProductByName) {
+      return res.status(400).json({ message: "Tên sản phẩm đã tồn tại" });
+    }
 
     if (!Category) {
       return res.status(404).json({ message: "Không tìm thấy danh mục" });
@@ -383,7 +386,7 @@ app.post("/product/add", async (req: Request, res: Response) => {
 // Lấy tất cả sản phẩm
 app.get("/products", async (req: Request, res: Response) => {
   try {
-    const products = await Product.find().populate('category material');
+    const products = await Product.find().populate("category material");
     res.status(200).json(products);
   } catch (error) {
     console.error(error);
@@ -419,7 +422,9 @@ app.get("/product-test", async (req: Request, res: Response) => {
 // Lấy một sản phẩm theo ID
 app.get("/product/:id", async (req: Request, res: Response) => {
   try {
-    const product = await Product.findById(req.params.id).populate('category material');
+    const product = await Product.findById(req.params.id).populate(
+      "category material"
+    );
     if (!product) {
       return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     }
@@ -433,20 +438,21 @@ app.get("/product/:id", async (req: Request, res: Response) => {
 // Update a product by ID
 app.put("/product/:id", async (req: Request, res: Response) => {
   try {
-    const {
-      masp,
-      name,
-      img,
-      moTa,
-      categoryID,
-      materialID,
-      status,
-      variants,
-    } = req.body;
+    const { masp, name, img, moTa, categoryID, materialID, status, variants } =
+      req.body;
 
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
-      { masp, name, img, moTa, category: categoryID, material: materialID, status, variants },
+      {
+        masp,
+        name,
+        img,
+        moTa,
+        category: categoryID,
+        material: materialID,
+        status,
+        variants,
+      },
       { new: true }
     );
 
@@ -454,7 +460,12 @@ app.put("/product/:id", async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     }
 
-    res.status(200).json({ message: "Cập nhật sản phẩm thành công", product: updatedProduct });
+    res
+      .status(200)
+      .json({
+        message: "Cập nhật sản phẩm thành công",
+        product: updatedProduct,
+      });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Lỗi cập nhật sản phẩm" });
@@ -641,8 +652,6 @@ app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
   }
 });
 
-
-
 // Kích hoạt lại người dùng
 app.put("/user/activate/:id", async (req: Request, res: Response) => {
   try {
@@ -660,7 +669,9 @@ app.put("/user/activate/:id", async (req: Request, res: Response) => {
     );
 
     if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng để kích hoạt lại." });
+      return res
+        .status(404)
+        .json({ message: "Không tìm thấy người dùng để kích hoạt lại." });
     }
 
     res.json({ message: "Người dùng đã được kích hoạt lại", user });
@@ -669,7 +680,6 @@ app.put("/user/activate/:id", async (req: Request, res: Response) => {
     res.status(500).json({ message: "Lỗi khi kích hoạt lại người dùng." });
   }
 });
-
 
 // Thêm danh mục
 app.post("/addcategory", async (req: Request, res: Response) => {
@@ -969,7 +979,7 @@ router.post("/api/orders", async (req: Request, res: Response) => {
       }
 
       // Tìm kiếm biến thể tương ứng trong mảng variants
-      const variant = product.variants.find(v => v.size === item.size);
+      const variant = product.variants.find((v) => v.size === item.size);
 
       if (!variant || variant.quantity < item.quantity) {
         return res.status(400).json({
@@ -1462,7 +1472,6 @@ app.post("/api/orders/:orderId/cancel", async (req, res) => {
   }
 });
 
-
 // POST để thêm mới bình luận
 app.post("/comments", async (req, res) => {
   try {
@@ -1551,21 +1560,25 @@ app.put("/api/products/:productId", async (req: Request, res: Response) => {
     }
 
     // Find the corresponding variant in the variants array
-    const variant = product.variants.find(v => v.size === size);
+    const variant = product.variants.find((v) => v.size === size);
     if (!variant) {
       return res.status(404).json({ message: "Variant not found" });
     }
 
     // Check available stock for the selected variant
     if (variant.quantity < quantity) {
-      return res.status(400).json({ message: "Not enough stock for the selected variant" });
+      return res
+        .status(400)
+        .json({ message: "Not enough stock for the selected variant" });
     }
 
     // Update the variant quantity in stock
     variant.quantity -= quantity; // Deduct the ordered quantity
     await product.save(); // Save changes to the database
 
-    res.status(200).json({ message: "Variant quantity updated successfully", variant });
+    res
+      .status(200)
+      .json({ message: "Variant quantity updated successfully", variant });
   } catch (error) {
     console.error("Error updating product:", error);
     res.status(500).json({ message: "Error updating product quantity" });
