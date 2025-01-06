@@ -18,14 +18,16 @@ export interface IOrder extends Document {
     notes?: string;
   };
   cancelReason: {
-    reason: String , // Lý do hủy đơn
-    canceledAt:  Date , // Thời điểm hủy
-    canceledBy: String , // Người thực hiện hủy
-  },
-  paymentMethod: string; 
+    reason?: string; // Lý do hủy đơn
+    canceledAt?: Date; // Thời điểm hủy
+    canceledBy?: string; // Người thực hiện hủy
+  };
+  paymentMethod: string;
+  confirmedAt?: Date; // Thời điểm xác nhận đơn hàng
+  confirmedBy?: string; // Người xác nhận đơn hàng
 }
 
-
+// Define the schema for the order
 const orderSchema = new Schema<IOrder>({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   items: [
@@ -58,6 +60,8 @@ const orderSchema = new Schema<IOrder>({
     canceledAt: { type: Date }, // Thời điểm hủy
     canceledBy: { type: String }, // Người thực hiện hủy
   },
+  confirmedAt: { type: Date }, // Thời điểm xác nhận đơn hàng
+  confirmedBy: { type: String }, // Người xác nhận đơn hàng
 });
 
 const Order = mongoose.model<IOrder>("Order", orderSchema);
