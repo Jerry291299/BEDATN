@@ -1212,7 +1212,7 @@ app.get("/orders/:userId", async (req: Request, res: Response) => {
 
   try {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "Invalid user ID format" });
+      return res.status(400).json({ message: "Định dạng ID người dùng không hợp lệ" });
     }
 
     const orders = await Order.find({ userId })
@@ -1231,7 +1231,7 @@ app.get("/orders/:userId", async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error fetching orders:", error);
-    res.status(500).json({ message: "Failed to fetch orders", error });
+    res.status(500).json({ message: "Không thể tìm đơn đặt hàng", error });
   }
 });
 
@@ -1243,7 +1243,7 @@ app.put("/orders-list/:orderId", async (req, res) => {
     const order = await Order.findById(orderId);
 
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
     }
 
     if (status === "failed") {
@@ -1267,11 +1267,11 @@ app.put("/orders-list/:orderId", async (req, res) => {
     if (updatedOrder) {
       res.status(200).json(updatedOrder);
     } else {
-      res.status(404).json({ message: "Order not found after update" });
+      res.status(404).json({ message: "Không tìm thấy đơn hàng sau khi cập nhật" });
     }
   } catch (error) {
     console.error("Error updating order:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({ message: "Lỗi máy chủ" });
   }
 });
 app.get("/orders/:orderId", async (req: Request, res: Response) => {
