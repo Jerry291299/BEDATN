@@ -19,10 +19,21 @@ import crypto from "crypto";
 import { createVNPayPaymentUrl, sortObject } from "./service/VNPay";
 import qs from "qs";
 import Product from "./product";
+import { Socket } from "socket.io";
+
+const http = require("http");
+const socketIo = require("socket.io");
+
 var cors = require("cors");
 const fs = require("fs");
+require("dotenv").config();
+//nodemailer
+const nodemailer = require("nodemailer");
 const asyncHandler = require("express-async-handler");
 const app = express();
+//socketIo
+const server = http.createServer(app);
+const io = socketIo(server);
 const { uploadPhoto } = require("./middleware/uploadImage.js");
 const PORT = process.env.PORT || 28017;
 const {
@@ -44,6 +55,36 @@ mongoose
 
 app.use(cors());
 app.use(bodyParser.json());
+
+// Định nghĩa kiểu cho userSockets
+interface UserSockets {
+  [userId: string]: string; // userId  tới socket.id
+}
+
+const userSockets: UserSockets = {};
+
+io.on("connection", (socket: Socket) => {
+  console.log("A user connected:", socket.id);
+
+  // Lắng nghe sự kiện đăng nhập của người dùng
+  socket.on("userLogin", (userId: string) => {
+    userSockets[userId] = socket.id;
+    console.log("User logged in:", userId);
+  });
+
+  // Lắng nghe sự kiện ngắt kết nối
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+    // Xóa socket khỏi danh sách khi người dùng ngắt kết nối
+    for (const userId in userSockets) {
+      if (userSockets[userId] === socket.id) {
+        console.log(userSockets[userId])
+        delete userSockets[userId];
+        break;
+      }
+    }
+  });
+});
 
 app.post(
   "/upload",
@@ -620,16 +661,38 @@ app.delete("/product/:id", async (req: Request, res: Response) => {
     res.status(500).json({ message: "Lỗi khi xóa SP" });
   }
 });
-//
-// app.put('/categories/:id/deactivate', (req, res) => {
-//   const categoryId = req.params.id;
-//   res.json({ message: 'Category deactivated' });
-// });
-// Vô hiệu hóa người dùng
+
+// gui mail
+async function sendDeactivationEmail(userEmail: string, reason: string) {
+  const transporter = nodemailer.createTransport({
+    service: 'Gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  const mailOptions = {
+    from: 'Beautiful House Admin',
+    to: userEmail,
+    subject: 'Tài khoản của bạn đã bị vô hiệu hóa',
+    text: `Chào bạn,
+
+Tài khoản của bạn đã bị vô hiệu hóa vì lý do: ${reason}.
+Nếu bạn có thắc mắc, vui lòng liên hệ với chúng tôi.
+
+Trân trọng,
+Đội ngũ hỗ trợ `,
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+// Vô hiệu hoá User
 app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { reason } = req.body; // Lấy lý do từ request
+    const { reason } = req.body;
 
     if (!reason) {
       return res.status(400).json({ message: "Lý do vô hiệu hóa là bắt buộc" });
@@ -643,6 +706,16 @@ app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
 
     if (!user) {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
+    }
+
+    // Gửi email thông báo
+    await sendDeactivationEmail(user.email, reason);
+
+    // Thông báo cho người dùng về việc vô hiệu hóa qua WebSocket
+    const socketId = userSockets[user._id];
+    if (socketId) {
+      io.to(socketId).emit("kicked", { message: "Tài khoản của bạn đã bị vô hiệu hóa." });
+      delete userSockets[user._id]; // Xóa socket ID khỏi danh sách
     }
 
     res.json({ message: "Người dùng đã được vô hiệu hóa", user });
@@ -876,28 +949,6 @@ app.get("/deactive/:id", (req, res) => {
   res.send(`Deactivating item with ID ${itemId}`);
 });
 
-// tìm kiếm và lọc sản phẩm theo tên sản phẩm và theo danh mục và theo giá
-// app.get('/products/search', async (rep, res) => {
-//   try {
-//     const { name, category, minPrice, maxPrice } = rep.query;
-//     let products = await product.find();
-//     // Lọc sản phẩm theo tên sản phẩm
-//     if (name) {
-//       products = products.filter(product => product.name.toLowerCase().includes(name.toLowerCase()));
-//     }
-//     // Lọc sản phẩm theo danh mục
-//     if (category) {
-//       products = products.filter(product => product.category === category);
-//     }
-//     // Lọc sản phẩm theo giá
-//     if (minPrice && maxPrice) {
-//       products = products.filter(product => product.price >= parseInt(minPrice) && product.price <= parseInt(maxPrice));
-//     } res.json(products);
-
-//   }catch(error){
-//     res.status(500).json({error:'Lỗi máy chủ nội bộ'});
-//   }
-// });
 
 app.put("/product/deactivate/:id", async (req: Request, res: Response) => {
   try {
@@ -1455,27 +1506,27 @@ app.post("/api/orders/:orderId/cancel", async (req, res) => {
     app.post('/api/orders/:orderId/confirm', async (req: Request, res: Response) => {
       const { orderId } = req.params;
       const { confirmedBy } = req.body;  // Lấy thông tin người xác nhận từ body
-    
+
       try {
         // Tìm đơn hàng theo ID
         const order = await Order.findById(orderId);
         if (!order) {
           return res.status(404).json({ message: 'Order not found.' });
         }
-    
+
         // Kiểm tra trạng thái của đơn hàng
         if (order.status === 'cancelled') {
           return res.status(400).json({ message: 'Order is cancelled and cannot be confirmed.' });
         }
-    
+
         // Cập nhật trạng thái đơn hàng và thời điểm xác nhận
         order.status = 'confirmed';  // Thay đổi trạng thái của đơn hàng
         order.confirmedAt = new Date();  // Cập nhật thời điểm xác nhận
         order.confirmedBy = confirmedBy || 'System';  // Người xác nhận (nếu không có thì mặc định là 'System')
-    
+
         // Lưu thông tin vào cơ sở dữ liệu
         await order.save();
-    
+
         // Trả về phản hồi thành công
         res.status(200).json({ message: 'Order confirmed successfully', order });
       } catch (error) {
@@ -1483,7 +1534,7 @@ app.post("/api/orders/:orderId/cancel", async (req, res) => {
         res.status(500).json({ message: 'Failed to confirm order.' });
       }
     });
-    
+
     // Cập nhật số lượng sản phẩm trong kho
     const updatePromises = order.items.map((item) => {
       return Product.findByIdAndUpdate(
