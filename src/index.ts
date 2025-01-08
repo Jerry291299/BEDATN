@@ -122,7 +122,7 @@ app.get("/users", async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({
-      message: "Error getting user information!",
+      message: "Lỗi lấy thông tin người dùng!",
     });
   }
 });
@@ -133,7 +133,7 @@ app.get("/usersaccount", async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({
-      message: "Error getting user information!",
+      message: "Lỗi lấy thông tin người dùng!",
     });
   }
 });
@@ -158,14 +158,14 @@ app.put("/:id/cartupdate", async (req: Request, res: Response) => {
   const { productId, newQuantity } = req.body;
 
   if (!productId || newQuantity == null || newQuantity <= 0) {
-    return res.status(400).json({ message: "Invalid product ID or quantity" });
+    return res.status(400).json({ message: "ID hoặc số lượng sản phẩm không hợp lệ" });
   }
 
   try {
     const cart = await Cart.findOne({ userId: id });
 
     if (!cart) {
-      return res.status(404).json({ message: "Cart not found" });
+      return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
     }
 
     const productIndex = cart.items.findIndex(
@@ -173,7 +173,7 @@ app.put("/:id/cartupdate", async (req: Request, res: Response) => {
     );
 
     if (productIndex === -1) {
-      return res.status(404).json({ message: "Product not found in cart" });
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm trong giỏ hàng" });
     }
 
     cart.items[productIndex].quantity = newQuantity;
@@ -181,8 +181,8 @@ app.put("/:id/cartupdate", async (req: Request, res: Response) => {
 
     res.status(200).json(cart);
   } catch (error) {
-    console.error("Error updating cart:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Lỗi cập nhật giỏ hàng:", error);
+    res.status(500).json({ message: "Lỗi máy chủ" });
   }
 });
 
@@ -190,14 +190,14 @@ app.post("/cart/add", async (req: Request, res: Response) => {
   const { userId, items } = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(userId)) {
-    return res.status(400).json({ message: "Invalid userId format" });
+    return res.status(400).json({ message: "Định dạng userId không hợp lệ" });
   }
   if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ message: "ko được để trống elements" });
+    return res.status(400).json({ message: "Không được để trống elements" });
   }
   const { productId, name, price, img, quantity } = items[0];
   if (!mongoose.Types.ObjectId.isValid(productId)) {
-    return res.status(400).json({ message: "Invalid productId format" });
+    return res.status(400).json({ message: "Định dạng ID sản phẩm không hợp lệ" });
   }
   if (quantity <= 0) {
     return res.status(400).json({ message: "Số lượng phải lớn hơn 0" });
