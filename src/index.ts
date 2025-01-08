@@ -1503,7 +1503,7 @@ app.post("/api/orders/:orderId/cancel", async (req, res) => {
       canceledAt: new Date(), // Thời điểm hủy
       canceledBy: canceledBy || "Unknown", // Người thực hiện hủy
     };
-    app.post('/api/orders/:orderId/confirm', async (req: Request, res: Response) => {
+    app.post("/api/orders/:orderId/confirm", async (req: Request, res: Response) => {
       const { orderId } = req.params;
       const { confirmedBy } = req.body;  // Lấy thông tin người xác nhận từ body
 
