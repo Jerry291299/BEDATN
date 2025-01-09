@@ -20,6 +20,7 @@ import { createVNPayPaymentUrl, sortObject } from "./service/VNPay";
 import qs from "qs";
 import Product from "./product";
 import { Socket } from "socket.io";
+import DeactivationHistory from "./DeactivationHistory";
 
 const http = require("http");
 const socketIo = require("socket.io");
@@ -724,7 +725,15 @@ app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
     res.status(500).json({ message: "Lỗi khi vô hiệu hóa người dùng" });
   }
 });
-
+app.get("/user/deactivation-history", async (req: Request, res: Response) => {
+  try {
+    const history = await DeactivationHistory.find().populate("userId deactivatedBy", "name email").exec();
+    res.json(history);
+  } catch (error) {
+    console.error("Error fetching deactivation history:", error);
+    res.status(500).json({ message: "Lỗi khi lấy lịch sử vô hiệu hóa" });
+  }
+});
 // Kích hoạt lại người dùng
 app.put("/user/activate/:id", async (req: Request, res: Response) => {
   try {
