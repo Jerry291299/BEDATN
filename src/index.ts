@@ -21,7 +21,7 @@ import qs from "qs";
 import Product from "./product";
 import { Socket } from "socket.io";
 import DeactivationHistory from "./DeactivationHistory";
-
+import { checkUserActiveStatus } from "./middleware/Kickuser";
 const http = require("http");
 const socketIo = require("socket.io");
 
@@ -207,7 +207,8 @@ app.put("/:id/cartupdate", async (req: Request, res: Response) => {
   }
 });
 
-app.post("/cart/add", async (req: Request, res: Response) => {
+// app.post("/cart/add",checkUserActiveStatus,  async (req: Request, res: Response) => {
+app.post("/cart/add",  async (req: Request, res: Response) => {
   const { userId, items } = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(userId)) {
@@ -729,22 +730,24 @@ app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
 
-    // Gửi email thông báo
-    await sendDeactivationEmail(user.email, reason);
-
-    // Thông báo cho người dùng về việc vô hiệu hóa qua WebSocket
+    // Notify via WebSocket
     const socketId = userSockets[user._id];
     if (socketId) {
       io.to(socketId).emit("kicked", { message: "Tài khoản của bạn đã bị vô hiệu hóa." });
-      delete userSockets[user._id]; // Xóa socket ID khỏi danh sách
+      delete userSockets[user._id];
     }
 
-    res.json({ message: "Người dùng đã được vô hiệu hóa", user });
+    // Send response to frontend to clear session storage
+    res.json({ 
+      message: "Người dùng đã được vô hiệu hóa, vui lòng đăng nhập lại.",
+      logout: true // Add a flag to indicate the user should be logged out
+    });
   } catch (error) {
     console.error("Error deactivating user:", error);
     res.status(500).json({ message: "Lỗi khi vô hiệu hóa người dùng" });
   }
 });
+
 app.get("/user/deactivation-history", async (req: Request, res: Response) => {
   try {
     const history = await DeactivationHistory.find().populate("userId deactivatedBy", "name email").exec();
