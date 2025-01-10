@@ -127,6 +127,26 @@ app.get("/users", async (req: Request, res: Response) => {
     });
   }
 });
+
+app.get("/user/:id", async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findById(userId); // Fetch user by ID
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found!",
+      });
+    }
+
+    res.json(user); // Respond with the user's data
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({
+      message: "Error fetching user information!",
+    });
+  }
+});
 app.get("/usersaccount", async (req: Request, res: Response) => {
   try {
     const users = await User.find();
@@ -1675,6 +1695,47 @@ app.put("/api/products/:productId", async (req: Request, res: Response) => {
     res.status(500).json({ message: "Error updating product quantity" });
   }
 });
+
+app.put("/updateProfile/:userId", async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  const { name, dob, gender, address, phone, img } = req.body;
+
+  try {
+    // Validate required fields (optional based on your needs)
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // Update the user in the database
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        $set: {
+          ...(img && { img }),
+          ...(name && { name }),
+          ...(dob && { dob }),
+          ...(gender && { gender }),
+          ...(address && { address }),
+          ...(phone && { phone }),
+        },
+      },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
