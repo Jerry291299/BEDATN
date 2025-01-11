@@ -207,8 +207,8 @@ app.put("/:id/cartupdate", async (req: Request, res: Response) => {
   }
 });
 
-// app.post("/cart/add",checkUserActiveStatus,  async (req: Request, res: Response) => {
-app.post("/cart/add",  async (req: Request, res: Response) => {
+app.post("/cart/add",checkUserActiveStatus,  async (req: Request, res: Response) => {
+// app.post("/cart/add",  async (req: Request, res: Response) => {
   const { userId, items } = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(userId)) {
