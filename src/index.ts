@@ -19,11 +19,14 @@ import crypto from "crypto";
 import { createVNPayPaymentUrl, sortObject } from "./service/VNPay";
 import qs from "qs";
 import Product from "./product";
+
+import ChangePassword from "./ChangePassword";
 import { Socket } from "socket.io";
 import DeactivationHistory from "./DeactivationHistory";
 import { checkUserActiveStatus } from "./middleware/Kickuser";
 const http = require("http");
 const socketIo = require("socket.io");
+
 
 var cors = require("cors");
 const fs = require("fs");
@@ -1698,6 +1701,53 @@ app.put("/api/products/:productId", async (req: Request, res: Response) => {
     res.status(500).json({ message: "Error updating product quantity" });
   }
 });
+app.put("/change-password/:userId", async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  const { oldPassword, newPassword, changedBy } = req.body;
+
+  try {
+    // Kiểm tra ID người dùng
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // Tìm người dùng
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Kiểm tra mật khẩu cũ
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Old password is incorrect" });
+    }
+
+    // Mã hóa mật khẩu mới
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Cập nhật mật khẩu trong tài liệu người dùng
+    user.password = hashedNewPassword;
+    await user.save();
+
+
+    // Ghi lại lịch sử thay đổi mật khẩu
+    const changeLog = new ChangePassword({
+      userId,
+      oldPassword, // Có thể không lưu mật khẩu cũ để bảo mật
+      newPassword: hashedNewPassword,
+      changedBy,
+    });
+    await changeLog.save();
+
+    res.status(200).json({
+      message: "Password changed successfully",
+    });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 
 app.put("/updateProfile/:userId", async (req: Request, res: Response) => {
   const { userId } = req.params;
@@ -1738,6 +1788,7 @@ app.put("/updateProfile/:userId", async (req: Request, res: Response) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
 
 
 app.listen(PORT, () => {
