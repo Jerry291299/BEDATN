@@ -1,29 +1,30 @@
 import mongoose, { Schema, Document } from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
 
-// Giao diện cho biến thể sản phẩm
+
 export interface Variant {
-  size: string; // Kích thước
-  quantity: number; // Số lượng
-  price: number; // Giá
-  discount: number; // Giảm giá (phần trăm)
+  size: string; 
+  quantity: number;
+  price: number; 
+  discount: number;
 }
 
-// Giao diện cho sản phẩm
+
 export interface Product extends Document {
-  masp: string; // ID sản phẩm
-  name: string; // Tên sản phẩm
-  img: string[]; // Mảng URL ảnh sản phẩm
-  moTa: string; // Mô tả sản phẩm
-  category: mongoose.Schema.Types.ObjectId; // Tham chiếu đến danh mục
-  material: mongoose.Schema.Types.ObjectId; // Tham chiếu đến chất liệu
-  status: boolean; // Trạng thái sản phẩm
-  variants: Variant[]; // Mảng chứa các biến thể sản phẩm
-  createdAt: Date; // Thời gian tạo
-  updatedAt: Date; // Thời gian cập nhật
+  masp: string;
+  name: string; 
+  img: string[]; 
+  moTa: string; 
+  Brand: string; 
+  category: mongoose.Schema.Types.ObjectId; 
+  material: mongoose.Schema.Types.ObjectId; 
+  status: boolean; 
+  variants: Variant[]; 
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-// Định nghĩa schema cho biến thể sản phẩm
+
 const VariantSchema: Schema = new Schema(
   {
     size: { type: String, required: true },
@@ -31,16 +32,17 @@ const VariantSchema: Schema = new Schema(
     price: { type: Number, required: true },
     discount: { type: Number, default: 0 },
   },
-  { timestamps: true } // Thêm timestamps cho từng biến thể
+  { timestamps: true }
 );
 
-// Định nghĩa schema cho sản phẩm
+
 const ProductSchema: Schema = new Schema(
   {
     masp: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     img: [{ type: String }],
     moTa: { type: String, required: true },
+    brand: { type: String, required: true },
     category: { type: Schema.Types.ObjectId, ref: "Category", required: true },
     material: { type: Schema.Types.ObjectId, ref: "Material", required: true },
     status: { type: Boolean, required: true },
@@ -57,9 +59,7 @@ const ProductSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-// Cập nhật middleware `pre-save` với kiểu `this` đúng
 
-// Trước khi lưu sản phẩm, kiểm tra kích thước trùng lặp
 export function checkDuplicateSizes(variants: Variant[]): Error | null {
   const sizeSet = new Set();
   for (const variant of variants) {
@@ -73,13 +73,13 @@ export function checkDuplicateSizes(variants: Variant[]): Error | null {
   return null;
 }
 
-// Tạo chỉ mục duy nhất kết hợp cho masp và name
+
 ProductSchema.index({ masp: 1, name: 1 }, { unique: true });
 
-// Kích hoạt phân trang cho model sản phẩm
+
 ProductSchema.plugin(mongoosePaginate);
 
-// Tạo và xuất model sản phẩm
+
 const Product = mongoose.model<Product, mongoose.PaginateModel<Product>>(
   "Product",
   ProductSchema

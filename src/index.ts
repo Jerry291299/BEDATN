@@ -406,7 +406,7 @@ app.post("/register", async (req: Request, res: Response) => {
 // Thêm sản phẩm
 app.post("/product/add", async (req: Request, res: Response) => {
   try {
-    const { masp, name, img, moTa, categoryID, materialID, status, variants } =
+    const { masp, name, img, moTa, brand, categoryID, materialID, status, variants } =
       req.body;
 
     // Kiểm tra xem có sản phẩm nào có cùng masp hoặc name không
@@ -435,6 +435,7 @@ app.post("/product/add", async (req: Request, res: Response) => {
       name,
       img,
       moTa,
+      brand,
       category: categoryID,
       material: materialID,
       status,
