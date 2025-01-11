@@ -1543,37 +1543,7 @@ app.post("/api/orders/:orderId/cancel", async (req, res) => {
       canceledAt: new Date(), // Thời điểm hủy
       canceledBy: canceledBy || "Unknown", // Người thực hiện hủy
     };
-    app.post("/api/orders/:orderId/confirm", async (req: Request, res: Response) => {
-      const { orderId } = req.params;
-      const { confirmedBy } = req.body;  // Lấy thông tin người xác nhận từ body
-
-      try {
-        // Tìm đơn hàng theo ID
-        const order = await Order.findById(orderId);
-        if (!order) {
-          return res.status(404).json({ message: 'Order not found.' });
-        }
-
-        // Kiểm tra trạng thái của đơn hàng
-        if (order.status === 'cancelled') {
-          return res.status(400).json({ message: 'Order is cancelled and cannot be confirmed.' });
-        }
-
-        // Cập nhật trạng thái đơn hàng và thời điểm xác nhận
-        order.status = 'confirmed';  // Thay đổi trạng thái của đơn hàng
-        order.confirmedAt = new Date();  // Cập nhật thời điểm xác nhận
-        order.confirmedBy = confirmedBy || 'System';  // Người xác nhận (nếu không có thì mặc định là 'System')
-
-        // Lưu thông tin vào cơ sở dữ liệu
-        await order.save();
-
-        // Trả về phản hồi thành công
-        res.status(200).json({ message: 'Order confirmed successfully', order });
-      } catch (error) {
-        console.error('Error confirming order:', error);
-        res.status(500).json({ message: 'Failed to confirm order.' });
-      }
-    });
+    
 
     // Cập nhật số lượng sản phẩm trong kho
     const updatePromises = order.items.map((item) => {
@@ -1591,6 +1561,37 @@ app.post("/api/orders/:orderId/cancel", async (req, res) => {
   } catch (error) {
     console.error("Error cancelling order:", error);
     res.status(500).json({ message: "Failed to cancel order." });
+  }
+});
+app.post("/api/orders/:orderId/confirm", async (req: Request, res: Response) => {
+  const { orderId } = req.params;
+  const { confirmedBy } = req.body;  // Lấy thông tin người xác nhận từ body
+
+  try {
+    // Tìm đơn hàng theo ID
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found.' });
+    }
+
+    // Kiểm tra trạng thái của đơn hàng
+    if (order.status === 'cancelled') {
+      return res.status(400).json({ message: 'Order is cancelled and cannot be confirmed.' });
+    }
+
+    // Cập nhật trạng thái đơn hàng và thời điểm xác nhận
+    order.status = 'confirmed';  // Thay đổi trạng thái của đơn hàng
+    order.confirmedAt = new Date();  // Cập nhật thời điểm xác nhận
+    order.confirmedBy = confirmedBy || 'System';  // Người xác nhận (nếu không có thì mặc định là 'System')
+
+    // Lưu thông tin vào cơ sở dữ liệu
+    await order.save();
+
+    // Trả về phản hồi thành công
+    res.status(200).json({ message: 'Order confirmed successfully', order });
+  } catch (error) {
+    console.error('Error confirming order:', error);
+    res.status(500).json({ message: 'Failed to confirm order.' });
   }
 });
 
