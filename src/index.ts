@@ -210,9 +210,12 @@ app.put("/:id/cartupdate", async (req: Request, res: Response) => {
   }
 });
 
-app.post("/cart/add",checkUserActiveStatus,  async (req: Request, res: Response) => {
-// app.post("/cart/add",  async (req: Request, res: Response) => {
+// app.post("/cart/add",checkUserActiveStatus,  async (req: Request, res: Response) => {
+app.post("/cart/add",  async (req: Request, res: Response) => {
   const { userId, items } = req.body;
+
+
+  
 
   if (!mongoose.Types.ObjectId.isValid(userId)) {
     return res.status(400).json({ message: "Định dạng userId không hợp lệ" });
@@ -220,7 +223,7 @@ app.post("/cart/add",checkUserActiveStatus,  async (req: Request, res: Response)
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ message: "Không được để trống elements" });
   }
-  const { productId, name, price, img, quantity } = items[0];
+  const { productId, name, price, img, quantity, size } = items[0];
   if (!mongoose.Types.ObjectId.isValid(productId)) {
     return res.status(400).json({ message: "Định dạng ID sản phẩm không hợp lệ" });
   }
@@ -229,6 +232,7 @@ app.post("/cart/add",checkUserActiveStatus,  async (req: Request, res: Response)
   }
 
   try {
+  
     let cart = await Cart.findOne({ userId });
 
     if (cart) {
@@ -239,9 +243,9 @@ app.post("/cart/add",checkUserActiveStatus,  async (req: Request, res: Response)
       if (productIndex > -1) {
         let productItem = cart.items[productIndex];
         productItem.quantity += quantity;
-        cart.items[productIndex] = productItem;
+        cart.items[productIndex] = {...productItem, size};
       } else {
-        cart.items.push({ productId, name, price, img, quantity });
+        cart.items.push({ productId, name, price, img, quantity, size });
       }
 
       cart = await cart.save();
@@ -1676,6 +1680,10 @@ app.put("/api/products/:productId", async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
+    console.log(product, "product");
+    console.log(size, "size");
+    
+    
     // Find the corresponding variant in the variants array
     const variant = product.variants.find((v) => v.size === size);
     if (!variant) {
