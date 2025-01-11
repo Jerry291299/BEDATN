@@ -19,11 +19,25 @@ import crypto from "crypto";
 import { createVNPayPaymentUrl, sortObject } from "./service/VNPay";
 import qs from "qs";
 import Product from "./product";
+
 import ChangePassword from "./ChangePassword";
+import { Socket } from "socket.io";
+import DeactivationHistory from "./DeactivationHistory";
+import { checkUserActiveStatus } from "./middleware/Kickuser";
+const http = require("http");
+const socketIo = require("socket.io");
+
+
 var cors = require("cors");
 const fs = require("fs");
+require("dotenv").config();
+//nodemailer
+const nodemailer = require("nodemailer");
 const asyncHandler = require("express-async-handler");
 const app = express();
+//socketIo
+const server = http.createServer(app);
+const io = socketIo(server);
 const { uploadPhoto } = require("./middleware/uploadImage.js");
 const PORT = process.env.PORT || 28017;
 const {
@@ -45,6 +59,36 @@ mongoose
 
 app.use(cors());
 app.use(bodyParser.json());
+
+// Định nghĩa kiểu cho userSockets
+interface UserSockets {
+  [userId: string]: string; // userId  tới socket.id
+}
+
+const userSockets: UserSockets = {};
+
+io.on("connection", (socket: Socket) => {
+  console.log("A user connected:", socket.id);
+
+  // Lắng nghe sự kiện đăng nhập của người dùng
+  socket.on("userLogin", (userId: string) => {
+    userSockets[userId] = socket.id;
+    console.log("User logged in:", userId);
+  });
+
+  // Lắng nghe sự kiện ngắt kết nối
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+    // Xóa socket khỏi danh sách khi người dùng ngắt kết nối
+    for (const userId in userSockets) {
+      if (userSockets[userId] === socket.id) {
+        console.log(userSockets[userId])
+        delete userSockets[userId];
+        break;
+      }
+    }
+  });
+});
 
 app.post(
   "/upload",
@@ -82,7 +126,27 @@ app.get("/users", async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({
-      message: "Error getting user information!",
+      message: "Lỗi lấy thông tin người dùng!",
+    });
+  }
+});
+
+app.get("/user/:id", async (req: Request, res: Response) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findById(userId); // Fetch user by ID
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found!",
+      });
+    }
+
+    res.json(user); // Respond with the user's data
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({
+      message: "Error fetching user information!",
     });
   }
 });
@@ -93,7 +157,7 @@ app.get("/usersaccount", async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({
-      message: "Error getting user information!",
+      message: "Lỗi lấy thông tin người dùng!",
     });
   }
 });
@@ -118,14 +182,14 @@ app.put("/:id/cartupdate", async (req: Request, res: Response) => {
   const { productId, newQuantity } = req.body;
 
   if (!productId || newQuantity == null || newQuantity <= 0) {
-    return res.status(400).json({ message: "Invalid product ID or quantity" });
+    return res.status(400).json({ message: "ID hoặc số lượng sản phẩm không hợp lệ" });
   }
 
   try {
     const cart = await Cart.findOne({ userId: id });
 
     if (!cart) {
-      return res.status(404).json({ message: "Cart not found" });
+      return res.status(404).json({ message: "Không tìm thấy giỏ hàng" });
     }
 
     const productIndex = cart.items.findIndex(
@@ -133,7 +197,7 @@ app.put("/:id/cartupdate", async (req: Request, res: Response) => {
     );
 
     if (productIndex === -1) {
-      return res.status(404).json({ message: "Product not found in cart" });
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm trong giỏ hàng" });
     }
 
     cart.items[productIndex].quantity = newQuantity;
@@ -141,23 +205,24 @@ app.put("/:id/cartupdate", async (req: Request, res: Response) => {
 
     res.status(200).json(cart);
   } catch (error) {
-    console.error("Error updating cart:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Lỗi cập nhật giỏ hàng:", error);
+    res.status(500).json({ message: "Lỗi máy chủ" });
   }
 });
 
-app.post("/cart/add", async (req: Request, res: Response) => {
+// app.post("/cart/add",checkUserActiveStatus,  async (req: Request, res: Response) => {
+app.post("/cart/add",  async (req: Request, res: Response) => {
   const { userId, items } = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(userId)) {
-    return res.status(400).json({ message: "Invalid userId format" });
+    return res.status(400).json({ message: "Định dạng userId không hợp lệ" });
   }
   if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ message: "ko được để trống elements" });
+    return res.status(400).json({ message: "Không được để trống elements" });
   }
   const { productId, name, price, img, quantity } = items[0];
   if (!mongoose.Types.ObjectId.isValid(productId)) {
-    return res.status(400).json({ message: "Invalid productId format" });
+    return res.status(400).json({ message: "Định dạng ID sản phẩm không hợp lệ" });
   }
   if (quantity <= 0) {
     return res.status(400).json({ message: "Số lượng phải lớn hơn 0" });
@@ -621,16 +686,38 @@ app.delete("/product/:id", async (req: Request, res: Response) => {
     res.status(500).json({ message: "Lỗi khi xóa SP" });
   }
 });
-//
-// app.put('/categories/:id/deactivate', (req, res) => {
-//   const categoryId = req.params.id;
-//   res.json({ message: 'Category deactivated' });
-// });
-// Vô hiệu hóa người dùng
+
+// gui mail
+async function sendDeactivationEmail(userEmail: string, reason: string) {
+  const transporter = nodemailer.createTransport({
+    service: 'Gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  const mailOptions = {
+    from: 'Beautiful House Admin',
+    to: userEmail,
+    subject: 'Tài khoản của bạn đã bị vô hiệu hóa',
+    text: `Chào bạn,
+
+Tài khoản của bạn đã bị vô hiệu hóa vì lý do: ${reason}.
+Nếu bạn có thắc mắc, vui lòng liên hệ với chúng tôi.
+
+Trân trọng,
+Đội ngũ hỗ trợ `,
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+// Vô hiệu hoá User
 app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { reason } = req.body; // Lấy lý do từ request
+    const { reason } = req.body;
 
     if (!reason) {
       return res.status(400).json({ message: "Lý do vô hiệu hóa là bắt buộc" });
@@ -646,13 +733,33 @@ app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
 
-    res.json({ message: "Người dùng đã được vô hiệu hóa", user });
+    // Notify via WebSocket
+    const socketId = userSockets[user._id];
+    if (socketId) {
+      io.to(socketId).emit("kicked", { message: "Tài khoản của bạn đã bị vô hiệu hóa." });
+      delete userSockets[user._id];
+    }
+
+    // Send response to frontend to clear session storage
+    res.json({ 
+      message: "Người dùng đã được vô hiệu hóa, vui lòng đăng nhập lại.",
+      logout: true // Add a flag to indicate the user should be logged out
+    });
   } catch (error) {
     console.error("Error deactivating user:", error);
     res.status(500).json({ message: "Lỗi khi vô hiệu hóa người dùng" });
   }
 });
 
+app.get("/user/deactivation-history", async (req: Request, res: Response) => {
+  try {
+    const history = await DeactivationHistory.find().populate("userId deactivatedBy", "name email").exec();
+    res.json(history);
+  } catch (error) {
+    console.error("Error fetching deactivation history:", error);
+    res.status(500).json({ message: "Lỗi khi lấy lịch sử vô hiệu hóa" });
+  }
+});
 // Kích hoạt lại người dùng
 app.put("/user/activate/:id", async (req: Request, res: Response) => {
   try {
@@ -877,28 +984,6 @@ app.get("/deactive/:id", (req, res) => {
   res.send(`Deactivating item with ID ${itemId}`);
 });
 
-// tìm kiếm và lọc sản phẩm theo tên sản phẩm và theo danh mục và theo giá
-// app.get('/products/search', async (rep, res) => {
-//   try {
-//     const { name, category, minPrice, maxPrice } = rep.query;
-//     let products = await product.find();
-//     // Lọc sản phẩm theo tên sản phẩm
-//     if (name) {
-//       products = products.filter(product => product.name.toLowerCase().includes(name.toLowerCase()));
-//     }
-//     // Lọc sản phẩm theo danh mục
-//     if (category) {
-//       products = products.filter(product => product.category === category);
-//     }
-//     // Lọc sản phẩm theo giá
-//     if (minPrice && maxPrice) {
-//       products = products.filter(product => product.price >= parseInt(minPrice) && product.price <= parseInt(maxPrice));
-//     } res.json(products);
-
-//   }catch(error){
-//     res.status(500).json({error:'Lỗi máy chủ nội bộ'});
-//   }
-// });
 
 app.put("/product/deactivate/:id", async (req: Request, res: Response) => {
   try {
@@ -1162,7 +1247,7 @@ app.get("/orders/:userId", async (req: Request, res: Response) => {
 
   try {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "Invalid user ID format" });
+      return res.status(400).json({ message: "Định dạng ID người dùng không hợp lệ" });
     }
 
     const orders = await Order.find({ userId })
@@ -1181,7 +1266,7 @@ app.get("/orders/:userId", async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error fetching orders:", error);
-    res.status(500).json({ message: "Failed to fetch orders", error });
+    res.status(500).json({ message: "Không thể tìm đơn đặt hàng", error });
   }
 });
 
@@ -1193,7 +1278,7 @@ app.put("/orders-list/:orderId", async (req, res) => {
     const order = await Order.findById(orderId);
 
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
     }
 
     if (status === "failed") {
@@ -1217,11 +1302,11 @@ app.put("/orders-list/:orderId", async (req, res) => {
     if (updatedOrder) {
       res.status(200).json(updatedOrder);
     } else {
-      res.status(404).json({ message: "Order not found after update" });
+      res.status(404).json({ message: "Không tìm thấy đơn hàng sau khi cập nhật" });
     }
   } catch (error) {
     console.error("Error updating order:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({ message: "Lỗi máy chủ" });
   }
 });
 app.get("/orders/:orderId", async (req: Request, res: Response) => {
@@ -1453,30 +1538,30 @@ app.post("/api/orders/:orderId/cancel", async (req, res) => {
       canceledAt: new Date(), // Thời điểm hủy
       canceledBy: canceledBy || "Unknown", // Người thực hiện hủy
     };
-    app.post('/api/orders/:orderId/confirm', async (req: Request, res: Response) => {
+    app.post("/api/orders/:orderId/confirm", async (req: Request, res: Response) => {
       const { orderId } = req.params;
       const { confirmedBy } = req.body;  // Lấy thông tin người xác nhận từ body
-    
+
       try {
         // Tìm đơn hàng theo ID
         const order = await Order.findById(orderId);
         if (!order) {
           return res.status(404).json({ message: 'Order not found.' });
         }
-    
+
         // Kiểm tra trạng thái của đơn hàng
         if (order.status === 'cancelled') {
           return res.status(400).json({ message: 'Order is cancelled and cannot be confirmed.' });
         }
-    
+
         // Cập nhật trạng thái đơn hàng và thời điểm xác nhận
         order.status = 'confirmed';  // Thay đổi trạng thái của đơn hàng
         order.confirmedAt = new Date();  // Cập nhật thời điểm xác nhận
         order.confirmedBy = confirmedBy || 'System';  // Người xác nhận (nếu không có thì mặc định là 'System')
-    
+
         // Lưu thông tin vào cơ sở dữ liệu
         await order.save();
-    
+
         // Trả về phản hồi thành công
         res.status(200).json({ message: 'Order confirmed successfully', order });
       } catch (error) {
@@ -1484,7 +1569,7 @@ app.post("/api/orders/:orderId/cancel", async (req, res) => {
         res.status(500).json({ message: 'Failed to confirm order.' });
       }
     });
-    
+
     // Cập nhật số lượng sản phẩm trong kho
     const updatePromises = order.items.map((item) => {
       return Product.findByIdAndUpdate(
@@ -1645,6 +1730,7 @@ app.put("/change-password/:userId", async (req: Request, res: Response) => {
     user.password = hashedNewPassword;
     await user.save();
 
+
     // Ghi lại lịch sử thay đổi mật khẩu
     const changeLog = new ChangePassword({
       userId,
@@ -1662,6 +1748,49 @@ app.put("/change-password/:userId", async (req: Request, res: Response) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
+app.put("/updateProfile/:userId", async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  const { name, dob, gender, address, phone, img } = req.body;
+
+  try {
+    // Validate required fields (optional based on your needs)
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // Update the user in the database
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        $set: {
+          ...(img && { img }),
+          ...(name && { name }),
+          ...(dob && { dob }),
+          ...(gender && { gender }),
+          ...(address && { address }),
+          ...(phone && { phone }),
+        },
+      },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
+
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
 });
