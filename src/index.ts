@@ -1860,6 +1860,25 @@ app.put("/updateProfile/:userId", async (req: Request, res: Response) => {
   }
 });
 
+app.get('/api/orders/:id', async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Send the order data as a response
+    res.json(order);
+  } catch (error) {
+    console.error("Error fetching order by ID:", error);
+    res.status(500).json({ message: 'Could not fetch the order. Please try again later.' });
+  }
+});
+
 
 
 app.listen(PORT, () => {
