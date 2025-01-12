@@ -8,12 +8,21 @@ let vnp_Url: any =
 const vnp_ReturnUrl =
   process.env.VNP_RETURNURL || "http://localhost:3000/success"; // URL trả về của bạn
 
-export const createVNPayPaymentUrl = (
-  Id: string,
-  amount: number,
-  bankCode: string = "VNBANK",
-  req: any
-): string => {
+export const createVNPayPaymentUrl = ({
+  Id,
+  amount,
+  bankCode= "VNBANK",
+  customerDetails,
+  items,
+  req
+}: {
+  Id: string;
+  amount: number;
+  bankCode: string;
+  customerDetails: any;
+  items: any;
+  req: any;
+}) => {
   process.env.TZ = "Asia/Ho_Chi_Minh";
 
   let date = new Date();
@@ -63,6 +72,7 @@ export const createVNPayPaymentUrl = (
   let signed = hmac.update(new Buffer(signData, "utf-8")).digest("hex");
   vnp_Params["vnp_SecureHash"] = signed;
   vnpUrl += "?" + querystring.stringify(vnp_Params, { encode: false });
+
 
   return vnpUrl;
 };

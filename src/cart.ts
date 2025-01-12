@@ -6,6 +6,7 @@ export interface ICartItem {
   price: number; 
   img: string; 
   quantity: number; 
+  size: string;
 }
 
 export interface ICart extends Document {
@@ -22,6 +23,7 @@ const cartSchema = new Schema<ICart>({
       price: { type: Number, required: true }, 
       img: [{ type: String, required: true }], 
       quantity: { type: Number, required: true },
+      size: { type: String, required: true },
     },
   ],
 });

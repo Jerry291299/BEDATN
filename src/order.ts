@@ -5,9 +5,11 @@ import { ICartItem } from "./cart";
 export interface IOrder extends Document {
   userId: mongoose.Schema.Types.ObjectId;
   items: ICartItem[];
-  totalAmount: number;
+  amount: number;
   status: string;
+  paymentstatus: string;
   createdAt: Date;
+  magiaodich: string;
   customerDetails: {
     name: string;
     phone: string;
@@ -15,10 +17,17 @@ export interface IOrder extends Document {
     address: string;
     notes?: string;
   };
-  paymentMethod: string; 
+  cancelReason: {
+    reason?: string; // Lý do hủy đơn
+    canceledAt?: Date; // Thời điểm hủy
+    canceledBy?: string; // Người thực hiện hủy
+  };
+  paymentMethod: string;
+  confirmedAt?: Date; // Thời điểm xác nhận đơn hàng
+  confirmedBy?: string; // Người xác nhận đơn hàng
 }
 
-
+// Define the schema for the order
 const orderSchema = new Schema<IOrder>({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   items: [
@@ -30,9 +39,14 @@ const orderSchema = new Schema<IOrder>({
       quantity: { type: Number, required: true },
     },
   ],
-  totalAmount: { type: Number, required: true },
+  amount: { type: Number, required: true },
   status: { type: String, default: "pending" },
+  paymentstatus: { 
+    type: String, 
+    default: "chưa thanh toán" 
+  },
   createdAt: { type: Date, default: Date.now },
+  magiaodich: { type: String, required: false },
   customerDetails: {
     name: { type: String, required: true },
     phone: { type: String, required: true },
@@ -41,8 +55,14 @@ const orderSchema = new Schema<IOrder>({
     notes: { type: String },
   },
   paymentMethod: { type: String, required: true },
+  cancelReason: {
+    reason: { type: String }, // Lý do hủy đơn
+    canceledAt: { type: Date }, // Thời điểm hủy
+    canceledBy: { type: String }, // Người thực hiện hủy
+  },
+  confirmedAt: { type: Date }, // Thời điểm xác nhận đơn hàng
+  confirmedBy: { type: String }, // Người xác nhận đơn hàng
 });
-
 
 const Order = mongoose.model<IOrder>("Order", orderSchema);
 
