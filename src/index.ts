@@ -177,6 +177,21 @@ app.put("/user/:id", async (req: Request, res: Response) => {
   }
 });
 
+app.put("/admin/user/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const updatedUser = await User.findByIdAndUpdate(id, req.body, {
+      new: true,
+    });
+    res.json(updatedUser);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Lỗi khi cập nhật thông tin người dùng",
+    });
+  }
+});
+
 app.put("/:id/cartupdate", async (req: Request, res: Response) => {
   const { id } = req.params;
   const { productId, newQuantity } = req.body;
