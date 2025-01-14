@@ -25,6 +25,7 @@ import { Socket } from "socket.io";
 import DeactivationHistory from "./DeactivationHistory";
 import { checkUserActiveStatus } from "./middleware/Kickuser";
 import { Voucher } from "./Voucher";
+import { validateCartPrices } from "./utils/validateCartPrices";
 const http = require("http");
 const socketIo = require("socket.io");
 
@@ -2072,7 +2073,25 @@ app.post('/voucher/apply', async (req: Request, res: Response) => {
   }
 });
 
+app.post("/checkout", async (req, res) => {
+  const { userId } = req.body;
 
+  try {
+    const hasPriceChanged = await validateCartPrices(userId);
+
+    if (hasPriceChanged) {
+      await Cart.updateOne({ userId }, { items: [] });
+
+      return res.status(400).json({
+        message: "Product prices have changed. The cart has been reset.",
+      });
+    }
+
+    res.status(200).json({ message: "Checkout successful!" });
+  } catch (error) {
+    res.status(500).json({ message: error });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
