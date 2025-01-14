@@ -8,7 +8,7 @@ import { Uploadfile } from "./upload";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import category from "./danhmuc";
-import Cart from "./cart";
+import Cart, { ICartItem } from "./cart";
 import product from "./product";
 import Order from "./order";
 import material from "./material";
@@ -24,6 +24,8 @@ import ChangePassword from "./ChangePassword";
 import { Socket } from "socket.io";
 import DeactivationHistory from "./DeactivationHistory";
 import { checkUserActiveStatus } from "./middleware/Kickuser";
+import { Voucher } from "./Voucher";
+import { validateCartPrices } from "./utils/validateCartPrices";
 const http = require("http");
 const socketIo = require("socket.io");
 
@@ -177,6 +179,21 @@ app.put("/user/:id", async (req: Request, res: Response) => {
   }
 });
 
+app.put("/admin/user/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const updatedUser = await User.findByIdAndUpdate(id, req.body, {
+      new: true,
+    });
+    res.json(updatedUser);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Lỗi khi cập nhật thông tin người dùng",
+    });
+  }
+});
+
 app.put("/:id/cartupdate", async (req: Request, res: Response) => {
   const { id } = req.params;
   const { productId, newQuantity } = req.body;
@@ -211,59 +228,59 @@ app.put("/:id/cartupdate", async (req: Request, res: Response) => {
 });
 
 // app.post("/cart/add",checkUserActiveStatus,  async (req: Request, res: Response) => {
-  app.post("/cart/add", async (req: Request, res: Response) => {
-    const { userId, items } = req.body;
-  
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "Invalid userId format" });
-    }
-  
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: "Items array cannot be empty" });
-    }
-  
-    const { productId, name, price, img, quantity, size } = items[0];
-  
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
-      return res.status(400).json({ message: "Invalid productId format" });
-    }
-  
-    if (quantity <= 0) {
-      return res.status(400).json({ message: "Quantity must be greater than 0" });
-    }
-  
-    try {
-      let cart = await Cart.findOne({ userId });
-  
-      if (cart) {
-        const productIndex = cart.items.findIndex(
-          (p) => p.productId.toString() === productId && p.size === size
-        );
-  
-        if (productIndex > -1) {
-          return res.status(400).json({ 
-            message: "This product with the same size is already in the cart." 
-          });
-        } else {
-          cart.items.push({ productId, name, price, img, quantity, size });
-        }
-  
-        cart = await cart.save();
-        return res.status(200).json(cart);
-      } else {
-        const newCart = await Cart.create({
-          userId,
-          items: [{ productId, name, price, img, quantity, size }],
+app.post("/cart/add", async (req: Request, res: Response) => {
+  const { userId, items } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: "Invalid userId format" });
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: "Items array cannot be empty" });
+  }
+
+  const { productId, name, price, img, quantity, size } = items[0];
+
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    return res.status(400).json({ message: "Invalid productId format" });
+  }
+
+  if (quantity <= 0) {
+    return res.status(400).json({ message: "Quantity must be greater than 0" });
+  }
+
+  try {
+    let cart = await Cart.findOne({ userId });
+
+    if (cart) {
+      const productIndex = cart.items.findIndex(
+        (p) => p.productId.toString() === productId && p.size === size
+      );
+
+      if (productIndex > -1) {
+        return res.status(400).json({
+          message: "This product with the same size is already in the cart."
         });
-  
-        return res.status(201).json(newCart);
+      } else {
+        cart.items.push({ productId, name, price, img, quantity, size });
       }
-    } catch (error: any) {
-      console.error("Error adding to cart:", error);
-      res.status(500).json({ message: "Error adding to cart", error: error.message });
+
+      cart = await cart.save();
+      return res.status(200).json(cart);
+    } else {
+      const newCart = await Cart.create({
+        userId,
+        items: [{ productId, name, price, img, quantity, size }],
+      });
+
+      return res.status(201).json(newCart);
     }
-  });
-  
+  } catch (error: any) {
+    console.error("Error adding to cart:", error);
+    res.status(500).json({ message: "Error adding to cart", error: error.message });
+  }
+});
+
 
 app.delete("/cart/remove", async (req: Request, res: Response) => {
   const { userId, productId } = req.body;
@@ -710,16 +727,16 @@ async function sendDeactivationEmail(userEmail: string, reason: string) {
     text: `Chào bạn,
 
 Tài khoản của bạn đã bị vô hiệu hóa vì lý do: ${reason}.
-Nếu bạn có thắc mắc, vui lòng liên hệ với chúng tôi.
+Nếu bạn có thắc mắc, vui lòng liên hệ với chúng tôi qua Email : tuyenteo896@gmail.com để khôi phục Email.
 
 Trân trọng,
-Đội ngũ hỗ trợ `,
+`,
   };
 
   await transporter.sendMail(mailOptions);
 }
 
-// Vô hiệu hoá User
+// Vô hiệu hóa User
 app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -739,6 +756,14 @@ app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
 
+    // Gửi email thông báo
+    try {
+      await sendDeactivationEmail(user.email, reason);
+    } catch (emailError) {
+      console.error("Error sending email:", emailError);
+      // Không trả về lỗi 500 nếu gửi email không thành công, nhưng có thể log lại
+    }
+
     // Notify via WebSocket
     const socketId = userSockets[user._id];
     if (socketId) {
@@ -747,9 +772,9 @@ app.put("/user/deactivate/:id", async (req: Request, res: Response) => {
     }
 
     // Send response to frontend to clear session storage
-    res.json({ 
+    res.json({
       message: "Người dùng đã được vô hiệu hóa, vui lòng đăng nhập lại.",
-      logout: true // Add a flag to indicate the user should be logged out
+      logout: true // Thêm cờ để chỉ ra rằng người dùng nên đăng xuất
     });
   } catch (error) {
     console.error("Error deactivating user:", error);
@@ -1462,6 +1487,58 @@ app.post("/order/confirm", async (req: Request, res: Response) => {
 
     await order.save();
     await Cart.findOneAndUpdate({ userId }, { items: [] });
+
+    // Chuẩn bị thông tin sản phẩm cho email
+    const productDetailsHtml = items.map((item: ICartItem) => {
+      const variantInfo = `
+        <p>Kích thước: ${item.size}</p>
+        <p>Giá: ${(item.price).toFixed(0)} VND</p>
+        
+      ` ;
+
+      return `
+        <div style="margin-bottom: 10px;">
+          <h3>Tên sản phẩm: ${item.name}.</h3>
+          <p>Giá sản phẩm: ${(item.price).toFixed(0)} VND.</p>
+          <p>Số lượng: ${item.quantity}.</p>
+
+          <p>Biến thể sản phẩm: ${variantInfo}.</p>
+           <p>Hình ảnh sản phẩm :</p>
+          <img src="${item.img[0]}" alt="${item.name}" style="width:200px; height:auto;" />
+        </div>
+      `;
+    }).join('');
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    // Gửi email xác nhận
+    const emailOptions = {
+      from: process.env.EMAIL_USER,
+      to: customerDetails.email,
+      subject: ' Beautiful House - Xác nhận đơn hàng',
+      html: `
+        <h1>Xác nhận đơn hàng</h1>
+        <p>Đơn hàng của bạn đã được đặt thành công!</p>
+        <p>ID đơn hàng: ${order._id}.</p>
+        <p>Họ và tên Khách Hàng: ${customerDetails.name}.</p>
+        <p>Email Khách Hàng: ${customerDetails.email}.</p>
+        <p>Số điện thoại Khách Hàng: ${customerDetails.phone}.</p>
+        <p>Địa chỉ Khách Hàng: ${customerDetails.address}.</p>
+        <h2>Thông tin sản phẩm :</h2>
+        ${productDetailsHtml}
+        <p>Thời gian đặt đơn hàng: ${order.createdAt}.</p>
+        <h4>Phương thức thanh toán: Thanh toán khi nhận hàng </h4>
+        <h4>Thời gian nhận hàng : 2 - 3 ngày tới.</h4>
+      `,
+    };
+
+    await transporter.sendMail(emailOptions);
+
     res.status(201).json({
       message: "Order confirmed and cart reset",
       orderId: order._id,
@@ -1800,7 +1877,221 @@ app.put("/updateProfile/:userId", async (req: Request, res: Response) => {
   }
 });
 
+app.get('/api/orders/:id', async (req: Request, res: Response) => {
+  const { id } = req.params;
 
+  try {
+
+    const order = await Order.findById(id);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Send the order data as a response
+    res.json(order);
+  } catch (error) {
+    console.error("Error fetching order by ID:", error);
+    res.status(500).json({ message: 'Could not fetch the order. Please try again later.' });
+  }
+});
+
+app.put('/api/orders/:id/confirm-receive', async (req, res) => {
+  const { id } = req.params;
+  const { userId } = req.body; // Giả sử bạn gửi userId trong body để xác định người xác nhận
+
+  try {
+    const order = await Order.findByIdAndUpdate(
+      id,
+      {
+        status: 'Đã giao', // Cập nhật trạng thái thành 'received'
+        receivedAt: new Date(), // Ghi lại thời điểm nhận hàng
+        receivedBy: userId, // Ghi lại người xác nhận
+      },
+      { new: true }
+    );
+
+    if (!order) return res.status(404).send('Đơn hàng không được tìm thấy.');
+    res.send(order);
+  } catch (error) {
+    res.status(500).send('Có lỗi xảy ra.');
+  }
+});
+app.put('/orders-list/:orderId/received', async (req, res) => {
+  const { orderId } = req.params;
+  const { status } = req.body; // Get the status from the request body
+
+  try {
+      // Find the order by ID and update its status
+      const updatedOrder = await Order.findByIdAndUpdate(
+          orderId,
+          { status: status }, // Update the status to "Thành công"
+          { new: true } // Return the updated document
+      );
+
+      if (!updatedOrder) {
+          return res.status(404).json({ message: 'Order not found' });
+      }
+
+      res.status(200).json(updatedOrder);
+  } catch (error) {
+      console.error("Error updating order status:", error);
+      res.status(500).json({ message: 'Server error' });
+  }
+});
+app.put('/api/orders/:id/complete', async (req, res) => {
+  const { id } = req.params;
+  const { userId } = req.body; 
+
+  try {
+    const order = await Order.findByIdAndUpdate(
+      id,
+      {
+        status: 'Hoàn thành', 
+        receivedAt: new Date(), 
+        receivedBy: userId, 
+      },
+      { new: true }
+    );
+
+    if (!order) return res.status(404).send('Đơn hàng không được tìm thấy.');
+    res.send(order);
+  } catch (error) {
+    res.status(500).send('Có lỗi xảy ra.');
+  }
+});
+
+app.post('/vouchers/add', async (req: Request, res: Response) => {
+  const { code, discountAmount, expirationDate, isActive, quantity } = req.body;
+
+  try {
+    const voucher = new Voucher({ code, discountAmount, expirationDate, isActive, quantity });
+    await voucher.save();
+    res.status(201).json({ message: 'Voucher created successfully', voucher });
+  } catch (error) {
+    res.status(400).json({ message: 'Error creating voucher', error });
+  }
+});
+
+app.get('/vouchers', async (req: Request, res: Response) => {
+  try {
+    const vouchers = await Voucher.find();
+    res.json(vouchers);
+  } catch (error) {
+    console.error('Error fetching vouchers:', error);
+    res.status(500).json({ message: 'Failed to retrieve vouchers' });
+  }
+});
+
+app.get('/vouchers/:id', async (req: Request, res: Response) => {
+  try {
+    const voucher = await Voucher.findById(req.params.id);
+    if (!voucher) return res.status(404).json({ message: 'Voucher not found' });
+    res.status(200).json(voucher);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching voucher', error });
+  }
+});
+
+app.put('/vouchers/:id', async (req, res) => {
+  const { id } = req.params; 
+  const { code, discountAmount, expirationDate, quantity, isActive } = req.body; // Get updated data from the request body
+
+  try {
+    
+    const updatedVoucher = await Voucher.findByIdAndUpdate(
+      id,
+      { code, discountAmount, expirationDate, quantity, isActive },
+      { new: true }
+    );
+
+    if (!updatedVoucher) {
+      return res.status(404).json({ message: 'Voucher not found' });
+    }
+
+    
+    res.json(updatedVoucher);
+  } catch (error) {
+    console.error("Error updating voucher:", error);
+    res.status(500).json({ message: 'Error updating voucher' });
+  }
+});
+
+app.delete('/vouchers/:id', async (req: Request, res: Response) => {
+  try {
+    const deletedVoucher = await Voucher.findByIdAndDelete(req.params.id);
+    if (!deletedVoucher) return res.status(404).json({ message: 'Voucher not found' });
+    res.status(200).json({ message: 'Voucher deleted successfully', deletedVoucher });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting voucher', error });
+  }
+});
+
+app.put("/vouchers/:id/toggle", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const voucher = await Voucher.findById(id);
+    if (!voucher) {
+      return res.status(404).json({ message: "Voucher not found" });
+    }
+
+    voucher.isActive = !voucher.isActive;
+    await voucher.save();
+
+    res.status(200).json({ message: "Voucher status updated", voucher });
+  } catch (error) {
+    console.error("Error toggling voucher status:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.post('/voucher/apply', async (req: Request, res: Response) => {
+  const { code } = req.body;
+
+  try {
+    const voucher = await Voucher.findOne({ code, isActive: true });
+
+    if (!voucher) {
+      return res.status(404).json({ message: 'Invalid or expired voucher code.' });
+    }
+
+    if (voucher.quantity <= 0 || new Date() > voucher.expirationDate) {
+      return res.status(400).json({ message: 'Voucher is no longer valid.' });
+    }
+
+    // Reduce quantity and deactivate if it reaches 0
+    voucher.quantity -= 1;
+    if (voucher.quantity === 0) {
+      voucher.isActive = false;
+    }
+    await voucher.save();
+
+    res.json({ discountAmount: voucher.discountAmount });
+  } catch (error) {
+    res.status(500).json({ message: 'An error occurred.', error });
+  }
+});
+
+app.post("/checkout", async (req, res) => {
+  const { userId } = req.body;
+
+  try {
+    const hasPriceChanged = await validateCartPrices(userId);
+
+    if (hasPriceChanged) {
+      await Cart.updateOne({ userId }, { items: [] });
+
+      return res.status(400).json({
+        message: "Product prices have changed. The cart has been reset.",
+      });
+    }
+
+    res.status(200).json({ message: "Checkout successful!" });
+  } catch (error) {
+    res.status(500).json({ message: error });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);

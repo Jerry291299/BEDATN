@@ -25,6 +25,8 @@ export interface IOrder extends Document {
   paymentMethod: string;
   confirmedAt?: Date; // Thời điểm xác nhận đơn hàng
   confirmedBy?: string; // Người xác nhận đơn hàng
+  receivedAt?: Date; // Thời điểm nhận hàng
+  receivedBy?: string; // Người xác nhận đã nhận
 }
 
 // Define the schema for the order
@@ -62,6 +64,8 @@ const orderSchema = new Schema<IOrder>({
   },
   confirmedAt: { type: Date }, // Thời điểm xác nhận đơn hàng
   confirmedBy: { type: String }, // Người xác nhận đơn hàng
+  receivedAt: { type: Date }, // Thời điểm nhận hàng
+  receivedBy: { type: String }, // Người xác nhận đã nhận
 });
 
 const Order = mongoose.model<IOrder>("Order", orderSchema);
