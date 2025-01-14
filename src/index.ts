@@ -1895,91 +1895,28 @@ app.get('/api/orders/:id', async (req: Request, res: Response) => {
   }
 });
 
-
-app.post('/vouchers/add', async (req: Request, res: Response) => {
-  const { code, discountAmount, expirationDate, isActive, quantity } = req.body;
-
-  try {
-    const voucher = new Voucher({ code, discountAmount, expirationDate, isActive, quantity });
-    await voucher.save();
-    res.status(201).json({ message: 'Voucher created successfully', voucher });
-  } catch (error) {
-    res.status(400).json({ message: 'Error creating voucher', error });
-  }
-});
-
-app.get('/vouchers', async (req: Request, res: Response) => {
-  try {
-    const vouchers = await Voucher.find();
-    res.json(vouchers);
-  } catch (error) {
-    console.error('Error fetching vouchers:', error);
-    res.status(500).json({ message: 'Failed to retrieve vouchers' });
-  }
-});
-
-app.get('/vouchers/:id', async (req: Request, res: Response) => {
-  try {
-    const voucher = await Voucher.findById(req.params.id);
-    if (!voucher) return res.status(404).json({ message: 'Voucher not found' });
-    res.status(200).json(voucher);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching voucher', error });
-  }
-});
-
-app.put('/vouchers/:id', async (req, res) => {
-  const { id } = req.params; 
-  const { code, discountAmount, expirationDate, quantity, isActive } = req.body; // Get updated data from the request body
+app.put('/api/orders/:id/confirm-receive', async (req, res) => {
+  const { id } = req.params;
+  const { userId } = req.body; // Giả sử bạn gửi userId trong body để xác định người xác nhận
 
   try {
-    
-    const updatedVoucher = await Voucher.findByIdAndUpdate(
+    const order = await Order.findByIdAndUpdate(
       id,
-      { code, discountAmount, expirationDate, quantity, isActive },
+      {
+        status: 'Đã nhận hàng ', // Cập nhật trạng thái thành 'received'
+        receivedAt: new Date(), // Ghi lại thời điểm nhận hàng
+        receivedBy: userId, // Ghi lại người xác nhận
+      },
       { new: true }
     );
 
-    if (!updatedVoucher) {
-      return res.status(404).json({ message: 'Voucher not found' });
-    }
-
-    
-    res.json(updatedVoucher);
+    if (!order) return res.status(404).send('Đơn hàng không được tìm thấy.');
+    res.send(order);
   } catch (error) {
-    console.error("Error updating voucher:", error);
-    res.status(500).json({ message: 'Error updating voucher' });
+    res.status(500).send('Có lỗi xảy ra.');
   }
 });
 
-app.delete('/vouchers/:id', async (req: Request, res: Response) => {
-  try {
-    const deletedVoucher = await Voucher.findByIdAndDelete(req.params.id);
-    if (!deletedVoucher) return res.status(404).json({ message: 'Voucher not found' });
-    res.status(200).json({ message: 'Voucher deleted successfully', deletedVoucher });
-  } catch (error) {
-    res.status(500).json({ message: 'Error deleting voucher', error });
-  }
-});
-
-app.put("/vouchers/:id/toggle", async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-
-    const voucher = await Voucher.findById(id);
-    if (!voucher) {
-      return res.status(404).json({ message: "Voucher not found" });
-    }
-
-    voucher.isActive = !voucher.isActive;
-    await voucher.save();
-
-    res.status(200).json({ message: "Voucher status updated", voucher });
-  } catch (error) {
-    console.error("Error toggling voucher status:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
 
 
 app.listen(PORT, () => {
