@@ -1893,8 +1893,27 @@ app.get('/api/orders/:id', async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Could not fetch the order. Please try again later.' });
   }
 });
+app.put('/api/orders/:id/confirm-receive', async (req, res) => {
+  const { id } = req.params;
+  const { userId } = req.body; // Giả sử bạn gửi userId trong body để xác định người xác nhận
 
+  try {
+    const order = await Order.findByIdAndUpdate(
+      id,
+      {
+        status: 'Đã nhận hàng ', // Cập nhật trạng thái thành 'received'
+        receivedAt: new Date(), // Ghi lại thời điểm nhận hàng
+        receivedBy: userId, // Ghi lại người xác nhận
+      },
+      { new: true }
+    );
 
+    if (!order) return res.status(404).send('Đơn hàng không được tìm thấy.');
+    res.send(order);
+  } catch (error) {
+    res.status(500).send('Có lỗi xảy ra.');
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
