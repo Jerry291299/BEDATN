@@ -1903,9 +1903,31 @@ app.put('/api/orders/:id/confirm-receive', async (req, res) => {
     const order = await Order.findByIdAndUpdate(
       id,
       {
-        status: 'Đã nhận hàng ', // Cập nhật trạng thái thành 'received'
+        status: 'Đã giao', // Cập nhật trạng thái thành 'received'
         receivedAt: new Date(), // Ghi lại thời điểm nhận hàng
         receivedBy: userId, // Ghi lại người xác nhận
+      },
+      { new: true }
+    );
+
+    if (!order) return res.status(404).send('Đơn hàng không được tìm thấy.');
+    res.send(order);
+  } catch (error) {
+    res.status(500).send('Có lỗi xảy ra.');
+  }
+});
+
+app.put('/api/orders/:id/complete', async (req, res) => {
+  const { id } = req.params;
+  const { userId } = req.body; 
+
+  try {
+    const order = await Order.findByIdAndUpdate(
+      id,
+      {
+        status: 'Hoàn thành', 
+        receivedAt: new Date(), 
+        receivedBy: userId, 
       },
       { new: true }
     );
