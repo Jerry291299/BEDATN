@@ -2024,6 +2024,33 @@ app.put("/vouchers/:id/toggle", async (req: Request, res: Response) => {
   }
 });
 
+app.post('/voucher/apply', async (req: Request, res: Response) => {
+  const { code } = req.body;
+
+  try {
+    const voucher = await Voucher.findOne({ code, isActive: true });
+
+    if (!voucher) {
+      return res.status(404).json({ message: 'Invalid or expired voucher code.' });
+    }
+
+    if (voucher.quantity <= 0 || new Date() > voucher.expirationDate) {
+      return res.status(400).json({ message: 'Voucher is no longer valid.' });
+    }
+
+    // Reduce quantity and deactivate if it reaches 0
+    voucher.quantity -= 1;
+    if (voucher.quantity === 0) {
+      voucher.isActive = false;
+    }
+    await voucher.save();
+
+    res.json({ discountAmount: voucher.discountAmount });
+  } catch (error) {
+    res.status(500).json({ message: 'An error occurred.', error });
+  }
+});
+
 
 
 app.listen(PORT, () => {
