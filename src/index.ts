@@ -1916,7 +1916,28 @@ app.put('/api/orders/:id/confirm-receive', async (req, res) => {
     res.status(500).send('Có lỗi xảy ra.');
   }
 });
+app.put('/orders-list/:orderId/received', async (req, res) => {
+  const { orderId } = req.params;
+  const { status } = req.body; // Get the status from the request body
 
+  try {
+      // Find the order by ID and update its status
+      const updatedOrder = await Order.findByIdAndUpdate(
+          orderId,
+          { status: status }, // Update the status to "Thành công"
+          { new: true } // Return the updated document
+      );
+
+      if (!updatedOrder) {
+          return res.status(404).json({ message: 'Order not found' });
+      }
+
+      res.status(200).json(updatedOrder);
+  } catch (error) {
+      console.error("Error updating order status:", error);
+      res.status(500).json({ message: 'Server error' });
+  }
+});
 app.put('/api/orders/:id/complete', async (req, res) => {
   const { id } = req.params;
   const { userId } = req.body; 
