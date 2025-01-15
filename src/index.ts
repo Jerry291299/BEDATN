@@ -2093,6 +2093,19 @@ app.post("/checkout", async (req, res) => {
   }
 });
 
+app.get("/user/:id/status", async (req: Request, res: Response) => {
+  try {
+    const user = await User.findById(req.params.id).select("active reason");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    return res.status(200).json({ active: user.active, reason: user.reason });
+  } catch (error) {
+    console.error("Error checking user status:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server đang lắng nghe tại cổng ${PORT}`);
 });
